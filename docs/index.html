@@ -5,26 +5,98 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>ASI Letter — v2025.09.14</title>
   <style>
-    body{font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Cantarell,Arial;margin:2rem;display:flex;justify-content:center}
-    main{max-width:780px}
-    /* Preserve multiple spaces/newlines (fixes sign-off spacing) */
-    #letter{white-space:pre-wrap}
-    a{color:inherit;text-decoration:underline}
+    :root{
+      --bg:#f5f6f8; --text:#0b0f19; --card:#ffffff; --muted:#6b7280; --border:#e5e7eb; --link:#2563eb; --code:#f3f4f6;
+      --radius:16px; --shadow:0 12px 30px rgba(0,0,0,.12);
+      --w:820px;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0b0b0f; --text:#e7e9ee; --card:#14161b; --muted:#a1a6b0; --border:#24262d; --link:#60a5fa; --code:#1c1e24;
+        --shadow:0 14px 34px rgba(0,0,0,.45);
+      }
+    }
+
+    /* ChatGPT-like layout */
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      display:flex; align-items:flex-start; justify-content:center; padding:32px;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      font:16px/1.75 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Cantarell,Arial;
+    }
+    .shell{
+      width:100%; max-width:var(--w); background:var(--card); border:1px solid var(--border);
+      border-radius:var(--radius); box-shadow:var(--shadow);
+    }
+    header{padding:22px 24px 0; color:var(--muted)}
+    header .row{display:flex; gap:10px; align-items:baseline; flex-wrap:wrap}
+    header h1{margin:0; font-size:18px; color:var(--text)}
+    header code{background:var(--code); padding:.15rem .35rem; border-radius:8px}
+
+    main{padding:8px 24px 24px}
+    /* Make Markdown look nice */
+    #letter{white-space:pre-wrap} /* preserves multiple spaces (fixes sign-off) */
+    #letter p{margin:0 0 1.05em}
+    #letter h2{margin:1.4em 0 .6em; font-size:1.2rem}
+    #letter h3{margin:1.2em 0 .5em; font-size:1.05rem}
+    #letter ul,#letter ol{margin:.6em 0 .9em 1.25em}
+    #letter li{margin:.2em 0}
+    #letter blockquote{margin:1em 0; padding:.6em .9em; background:var(--code); border-left:4px solid var(--border); border-radius:8px}
+    a{color:var(--link); text-decoration:underline}
+    hr{border:0; border-top:1px solid var(--border); margin:18px 0}
+    footer{padding:0 24px 22px; color:var(--muted); font-size:.95rem}
+
+    .actions{display:flex; gap:14px; flex-wrap:wrap}
+    .btn{display:inline-flex; align-items:center; gap:.5ch; padding:.55rem .8rem; border:1px solid var(--border);
+         border-radius:10px; background:transparent; color:var(--text); text-decoration:none}
+    .btn:hover{border-color:var(--link)}
   </style>
 </head>
 <body>
-  <main>
-    <article id="letter">Loading…</article>
-    <hr>
-    <p><a href="https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/letter/ASI-Letter-v2025.09.14.md.asc">View the clear-signed release (.asc)</a></p>
-  </main>
+  <div class="shell">
+    <header>
+      <div class="row">
+        <h1>ASI Letter — v2025.09.14</h1>
+        <span>•</span>
+        <span>Author key fingerprint: <code>2C101FA70F42F93052F82FC755387365B7949796</code></span>
+      </div>
+    </header>
+
+    <main>
+      <article id="letter">Loading…</article>
+      <hr>
+      <div class="actions">
+        <a class="btn" href="https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/letter/ASI-Letter-v2025.09.14.md.asc">View the clear-signed release (.asc)</a>
+        <a class="btn" href="https://github.com/Alice-Sabrina-Ivy/asi-letter">GitHub repository</a>
+      </div>
+    </main>
+
+    <footer>
+      Rendered from the Markdown source. For verification, use the signed <code>.asc</code>.
+    </footer>
+  </div>
 
   <!-- Client-side Markdown renderer -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
+    // Fetch the Markdown mirrored into /docs
     fetch('letter.md')
       .then(r => r.text())
-      .then(md => { document.getElementById('letter').innerHTML = marked.parse(md); })
+      .then(md => {
+        // Optional tiny tweak: ensure a nice dash if the platform ever mangles it
+        md = md.replaceAll('—', '—'); // no-op, keeps UTF-8 em dash
+        // Render
+        const html = marked.parse(md);
+        document.getElementById('letter').innerHTML = html;
+
+        // Signature nicety (no .md change): add a wider space after the em dash,
+        // and a non-breaking space before "she/her", if that exact text exists.
+        const el = document.getElementById('letter');
+        el.innerHTML = el.innerHTML
+          .replace('Until we meet— ', 'Until we meet—&ensp;')
+          .replace('Alice Sabrina Ivy she/her', 'Alice Sabrina Ivy&nbsp;she/her');
+      })
       .catch(err => { document.getElementById('letter').textContent = 'Failed to load letter.md: ' + err; });
   </script>
 </body>
