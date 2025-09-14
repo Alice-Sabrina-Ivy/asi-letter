@@ -5,42 +5,50 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>ASI Letter — v2025.09.14</title>
   <style>
-    :root{
-      --bg:#f5f6f8; --text:#0b0f19; --card:#ffffff; --muted:#6b7280; --border:#e5e7eb; --link:#2563eb; --code:#f3f4f6;
-      --radius:16px; --shadow:0 12px 30px rgba(0,0,0,.12); --w:820px;
-    }
-    @media (prefers-color-scheme: dark){
-      :root{ --bg:#0b0b0f; --text:#e7e9ee; --card:#14161b; --muted:#a1a6b0; --border:#24262d; --link:#60a5fa; --code:#1c1e24; --shadow:0 14px 34px rgba(0,0,0,.45); }
-    }
-    html,body{height:100%}
-    body{
-      margin:0; background:var(--bg); color:var(--text);
-      display:flex; align-items:flex-start; justify-content:center; padding:32px;
-      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-      font:16px/1.75 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Cantarell,Arial;
-    }
-    .shell{width:100%; max-width:var(--w); background:var(--card); border:1px solid var(--border);
-      border-radius:var(--radius); box-shadow:var(--shadow);}
-    header{padding:22px 24px 0; color:var(--muted)}
-    header .row{display:flex; gap:10px; align-items:baseline; flex-wrap:wrap}
-    header h1{margin:0; font-size:18px; color:var(--text)}
-    header code{background:var(--code); padding:.15rem .35rem; border-radius:8px}
-    main{padding:8px 24px 24px}
-    /* Make Markdown look nice + preserve multiple spaces (signature) */
-    #letter{white-space:pre-wrap}
-    #letter p{margin:0 0 1.05em}
-    #letter h2{margin:1.4em 0 .6em; font-size:1.2rem}
-    #letter h3{margin:1.2em 0 .5em; font-size:1.05rem}
-    #letter ul,#letter ol{margin:.6em 0 .9em 1.25em}
-    #letter li{margin:.2em 0}
-    #letter blockquote{margin:1em 0; padding:.6em .9em; background:var(--code); border-left:4px solid var(--border); border-radius:8px}
-    a{color:var(--link); text-decoration:underline}
-    hr{border:0; border-top:1px solid var(--border); margin:18px 0}
-    .actions{display:flex; gap:14px; flex-wrap:wrap}
-    .btn{display:inline-flex; align-items:center; gap:.5ch; padding:.55rem .8rem; border:1px solid var(--border);
-         border-radius:10px; background:transparent; color:var(--text); text-decoration:none}
-    .btn:hover{border-color:var(--link)}
-  </style>
+  :root{
+    --bg:#f5f6f8; --text:#0b0f19; --card:#ffffff; --muted:#6b7280; --border:#e5e7eb; --link:#2563eb; --code:#f3f4f6;
+    --radius:16px; --shadow:0 12px 30px rgba(0,0,0,.12); --w:760px; --lh:1.6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0b0b0f; --text:#e7e9ee; --card:#14161b; --muted:#a1a6b0; --border:#24262d; --link:#60a5fa; --code:#1c1e24;
+           --shadow:0 14px 34px rgba(0,0,0,.45); }
+  }
+
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    display:flex; align-items:flex-start; justify-content:center; padding:28px;
+    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    font:15.75px/var(--lh) system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Cantarell,Arial;
+  }
+  .shell{
+    width:100%; max-width:var(--w); background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius); box-shadow:var(--shadow);
+  }
+  header{padding:18px 20px 0; color:var(--muted)}
+  header .row{display:flex; gap:10px; align-items:baseline; flex-wrap:wrap}
+  header h1{margin:0; font-size:17px; color:var(--text)}
+  header code{background:var(--code); padding:.1rem .35rem; border-radius:8px}
+
+  main{padding:6px 20px 20px}
+
+  /* Markdown tuning (compact, ChatGPT-ish) */
+  #letter{white-space:pre-wrap}
+  #letter p{margin:0 0 .7em}
+  #letter h2{margin:1.1em 0 .45em; font-size:1.15rem}
+  #letter h3{margin:.9em 0 .4em; font-size:1.02rem}
+  #letter ul,#letter ol{margin:.35em 0 .6em 1.2em}
+  #letter li{margin:.12em 0}
+  #letter hr{border:0; border-top:1px solid var(--border); margin:14px 0}
+
+  /* Quote box smaller + tighter */
+  #letter blockquote{
+    margin:.8em 0; padding:.55em .8em; background:var(--code);
+    border-left:3px solid var(--border); border-radius:10px;
+  }
+  #letter blockquote p{margin:.35em 0}
+  a{color:var(--link); text-decoration:underline}
+</style>
 </head>
 <body>
   <div class="shell">
