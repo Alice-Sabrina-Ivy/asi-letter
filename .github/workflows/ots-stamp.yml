@@ -1,0 +1,62 @@
+﻿name: ots-stamp
+on:
+  push:
+    paths:
+      - "docs/index.html"
+      - "docs/**/*.html"
+      - "index.html"
+      - "asi-letter-*.md"
+      - "letters/**.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  stamp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: pip install --upgrade opentimestamps-client
+      - run: chmod +x scripts/ots-stamp-and-inject.sh
+
+      - name: Find changed letter files
+        id: files
+        shell: bash
+        run: |
+          set -e
+          BEFORE="${{ github.event.before }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            BEFORE=$(git rev-parse HEAD^ 2>/dev/null || echo "")
+          fi
+          CHANGED=$(git diff --name-only "$BEFORE" ${{ github.sha }} -- \
+            "docs/index.html" "docs/**/*.html" \
+            "index.html" "asi-letter-*.md" "letters/**/*.md" || true)
+          echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
+          printf "Changed files:\n%s\n" "$CHANGED"
+
+      - name: Stamp each changed file
+        if: steps.files.outputs.changed != ''
+        shell: bash
+        run: |
+          set -e
+          for f in ${{ steps.files.outputs.changed }}; do
+            echo "Stamping $f"
+            ./scripts/ots-stamp-and-inject.sh "$f"
+          done
+
+      - name: Commit proofs & optional injection changes
+        if: steps.files.outputs.changed != ''
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(ots): add/update proofs and appendix [skip ci]"
+          file_pattern: |
+            proofs/**
+            docs/**/*.html
+            docs/index.html
+            index.html
+            asi-letter-*.md
+            letters/**.md
