@@ -12,13 +12,13 @@ title: ASI Letter — v2025.09.14
   main{max-width:780px}
   /* Preserve multiple spaces so your sign-off renders exactly */
   .letter{white-space:pre-wrap}
+  a{color:inherit;text-decoration:underline}
 </style>
 <body>
 <main>
-  {% capture letter_md %}{% include_relative ../letter/ASI-Letter-v2025.09.14.md %}{% endcapture %}
-  {% assign fixed = letter_md | replace: "—", "&mdash;" %}
+  {% capture letter_md %}{% include_relative letter.md %}{% endcapture %}
   <article class="letter">
-    {{ fixed | markdownify }}
+    {{ letter_md | markdownify }}
   </article>
 
   <hr>
