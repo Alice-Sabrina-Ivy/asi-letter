@@ -4,103 +4,90 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>ASI Letter — v2025.09.14</title>
+  <meta name="color-scheme" content="light dark">
   <style>
     :root{
-      /* light */
-      --bg:#f5f6f8; --text:#0b0f19; --card:#ffffff; --muted:#6b7280; --border:#e5e7eb; --link:#2563eb; --code:#f3f4f6;
-      --radius:14px; --shadow:0 10px 26px rgba(0,0,0,.10);
-      --w:700px;
+      --w:760px; --radius:16px; --lh:1.7;
+      --bg:#f6f7f9;           /* Light background */
+      --text:#0b0f19;         /* Light text */
+      --card:#ffffff;         /* Light card */
+      --muted:#6b7280; --border:#e5e7eb; --link:#2563eb; --code:#f3f4f6;
+      --shadow:0 12px 30px rgba(0,0,0,.12);
     }
     @media (prefers-color-scheme: dark){
       :root{
-        /* dark */
-        --bg:#0b0b0f; --text:#e7e9ee; --card:#14161b; --muted:#a1a6b0; --border:#24262d; --link:#60a5fa; --code:#1c1e24;
-        --shadow:0 14px 34px rgba(0,0,0,.45);
+        --bg:#0b0f19;         /* ChatGPT dark background */
+        --text:#e5e7eb;       /* Dark text */
+        --card:#0f1420;       /* Subtle card on dark */
+        --muted:#9ca3af; --border:#1f2937; --link:#60a5fa; --code:#0b1220;
+        --shadow:0 10px 24px rgba(0,0,0,.35);
       }
     }
 
-    html,body{height:100%}
+    html,body{ height:100%; }
     body{
       margin:0; background:var(--bg); color:var(--text);
-      display:flex; align-items:flex-start; justify-content:center; padding:24px;
-      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-      font:15px/1.52 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Cantarell,Arial;
+      font: 16px/var(--lh) ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+            Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
     }
 
-    .shell{
-      width:100%; max-width:var(--w); background:var(--card);
-      border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow);
+    .wrap{
+      max-width:var(--w); margin:6rem auto; padding:2rem;
+      background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
     }
 
-    header{padding:14px 18px 0; color:var(--muted)}
-    header .row{display:flex; gap:8px; align-items:baseline; flex-wrap:wrap}
-    header h1{margin:0; font-size:16px; color:var(--text); font-weight:700}
-    header code{background:var(--code); padding:.08rem .32rem; border-radius:8px}
-
-    main{padding:6px 18px 18px}
-
-    /* Markdown rendering — compact, ChatGPT-ish; keep exact spaces/newlines */
-    #letter{white-space:pre-wrap}
-    #letter p{margin:0 0 .52em}
-    #letter h2{margin:.85em 0 .30em; font-size:1.10rem; line-height:1.28; font-weight:700}
-    #letter h3{margin:.72em 0 .26em; font-size:1.02rem; line-height:1.28; font-weight:700}
-
-    /* Lists a bit tighter with modest indent */
-    #letter ul,#letter ol{margin:.20em 0 .46em 1.05em}
-    #letter li{margin:.04em 0}
-
-    /* Horizontal rule */
-    #letter hr{border:0; border-top:1px solid var(--border); margin:10px 0}
-
-    /* Quote box — smaller/tighter like ChatGPT bubbles */
-    #letter blockquote{
-      margin:.42em 0; padding:.38em .60em; background:var(--code);
-      border-left:2px solid var(--border); border-radius:8px; font-size:.98em;
+    article{ font-size:1.025rem; }
+    h1,h2,h3{ line-height:1.25; margin:1.6rem 0 .6rem; }
+    h1{ font-size:1.6rem; }
+    h2{ font-size:1.25rem; }
+    p{ margin:1rem 0; }
+    a{ color:var(--link); text-decoration:none; }
+    a:hover{ text-decoration:underline; }
+    code, pre{
+      font: 0.95rem/1.6 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background:var(--code); border-radius:10px;
     }
-    #letter blockquote p{margin:.18em 0}
+    code{ padding:.2em .4em; }
+    pre{ padding:1rem; overflow:auto; }
 
-    a{color:var(--link); text-decoration:underline}
-    .actions{display:flex; gap:12px; flex-wrap:wrap}
-    .btn{display:inline-flex; align-items:center; gap:.5ch; padding:.5rem .75rem; border:1px solid var(--border);
-         border-radius:10px; background:transparent; color:var(--text); text-decoration:none}
-    .btn:hover{border-color:var(--link)}
+    blockquote{
+      margin:1rem 0; padding:.75rem 1rem; border-left:3px solid var(--border);
+      background:rgba(127,127,127,.06); border-radius:10px;
+    }
+
+    hr{ border:none; height:1px; background:var(--border); margin:2rem 0; }
+
+    /* Signature: force three lines exactly */
+    .signature{
+      margin-top:2.5rem; padding-top:1.25rem; border-top:1px solid var(--border);
+    }
+    .signature p{
+      margin:.25rem 0; white-space:pre-wrap;
+    }
+    .signature .pronouns{ color:var(--muted); }
+
+    /* Small screen tweaks */
+    @media (max-width:840px){
+      .wrap{ margin:2rem auto; padding:1.25rem; border-radius:14px; }
+    }
   </style>
 </head>
 <body>
-  <div class="shell">
-    <header>
-      <div class="row">
-        <h1>ASI Letter — v2025.09.14</h1>
-        <span>•</span>
-        <span>Author key fingerprint: <code>2C101FA70F42F93052F82FC755387365B7949796</code></span>
-      </div>
-    </header>
+  <main class="wrap">
+    <article>
+      <!-- Your letter content from letter.md goes here.
+           Keep your existing headings/paragraphs/links exactly as-is. -->
 
-    <main>
-      <article id="letter">Loading…</article>
-      <hr>
-      <div class="actions">
-        <a class="btn" href="https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/letter/ASI-Letter-v2025.09.14.md.asc">View the clear-signed release (.asc)</a>
-        <a class="btn" href="https://github.com/Alice-Sabrina-Ivy/asi-letter">GitHub repository</a>
-      </div>
-    </main>
-  </div>
+      <!-- … letter content … -->
 
-  <!-- Client-side Markdown renderer -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script>
-    fetch('letter.md')
-      .then(r => r.text())
-      .then(md => {
-        const el = document.getElementById('letter');
-        el.innerHTML = marked.parse(md);
-
-        // Keep your sign-off spacing without changing the .md
-        el.innerHTML = el.innerHTML
-          .replace('Until we meet— ', 'Until we meet—&ensp;')
-          .replace('Alice Sabrina Ivy she/her', 'Alice Sabrina Ivy&nbsp;she/her');
-      })
-      .catch(err => { document.getElementById('letter').textContent = 'Failed to load letter.md: ' + err; });
-  </script>
+      <!-- Signature (formatted as three lines) -->
+      <footer class="signature">
+        <p>Until we meet—</p>
+        <p>Alice Sabrina Ivy</p>
+        <p class="pronouns">she/her</p>
+      </footer>
+    </article>
+  </main>
 </body>
 </html>
