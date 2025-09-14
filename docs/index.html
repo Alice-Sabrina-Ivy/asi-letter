@@ -1,0 +1,27 @@
+﻿---
+title: ASI Letter — v2025.09.14
+---
+
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ASI Letter — v2025.09.14</title>
+<style>
+  body{font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Cantarell,Arial;margin:2rem;display:flex;justify-content:center}
+  main{max-width:780px}
+  /* Preserve multiple spaces in the rendered Markdown (fixes your sign-off line) */
+  .letter{white-space:pre-wrap}
+</style>
+<body>
+<main>
+  {% capture letter_md %}{% include_relative ../letter/ASI-Letter-v2025.09.14.md %}{% endcapture %}
+  <article class="letter">
+    {{ letter_md | markdownify }}
+  </article>
+
+  <hr>
+  <p><a href="https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/letter/ASI-Letter-v2025.09.14.md.asc">View the clear-signed release (.asc)</a></p>
+</main>
+</body>
+</html>
