@@ -5,50 +5,57 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>ASI Letter — v2025.09.14</title>
   <style>
-  :root{
-    --bg:#f5f6f8; --text:#0b0f19; --card:#ffffff; --muted:#6b7280; --border:#e5e7eb; --link:#2563eb; --code:#f3f4f6;
-    --radius:16px; --shadow:0 12px 30px rgba(0,0,0,.12); --w:760px; --lh:1.6;
-  }
-  @media (prefers-color-scheme: dark){
-    :root{ --bg:#0b0b0f; --text:#e7e9ee; --card:#14161b; --muted:#a1a6b0; --border:#24262d; --link:#60a5fa; --code:#1c1e24;
-           --shadow:0 14px 34px rgba(0,0,0,.45); }
-  }
+    :root{
+      /* light */
+      --bg:#f5f6f8; --text:#0b0f19; --card:#ffffff; --muted:#6b7280; --border:#e5e7eb; --link:#2563eb; --code:#f3f4f6;
+      --radius:16px; --shadow:0 12px 30px rgba(0,0,0,.12);
+      --w:720px;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        /* dark */
+        --bg:#0b0b0f; --text:#e7e9ee; --card:#14161b; --muted:#a1a6b0; --border:#24262d; --link:#60a5fa; --code:#1c1e24;
+        --shadow:0 14px 34px rgba(0,0,0,.45);
+      }
+    }
 
-  html,body{height:100%}
-  body{
-    margin:0; background:var(--bg); color:var(--text);
-    display:flex; align-items:flex-start; justify-content:center; padding:28px;
-    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-    font:15.75px/var(--lh) system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Cantarell,Arial;
-  }
-  .shell{
-    width:100%; max-width:var(--w); background:var(--card); border:1px solid var(--border);
-    border-radius:var(--radius); box-shadow:var(--shadow);
-  }
-  header{padding:18px 20px 0; color:var(--muted)}
-  header .row{display:flex; gap:10px; align-items:baseline; flex-wrap:wrap}
-  header h1{margin:0; font-size:17px; color:var(--text)}
-  header code{background:var(--code); padding:.1rem .35rem; border-radius:8px}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      display:flex; align-items:flex-start; justify-content:center; padding:28px;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      font:15.5px/1.56 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Cantarell,Arial;
+    }
+    .shell{
+      width:100%; max-width:var(--w); background:var(--card); border:1px solid var(--border);
+      border-radius:var(--radius); box-shadow:var(--shadow);
+    }
+    header{padding:18px 20px 0; color:var(--muted)}
+    header .row{display:flex; gap:10px; align-items:baseline; flex-wrap:wrap}
+    header h1{margin:0; font-size:17px; color:var(--text)}
+    header code{background:var(--code); padding:.1rem .35rem; border-radius:8px}
+    main{padding:6px 20px 20px}
 
-  main{padding:6px 20px 20px}
+    /* Markdown rendering (ChatGPT-ish + preserves spaces) */
+    #letter{white-space:pre-wrap}
+    #letter p{margin:0 0 .58em}
+    #letter h2{margin:.95em 0 .35em; font-size:1.12rem; line-height:1.30; font-weight:700}
+    #letter h3{margin:.80em 0 .30em; font-size:1.02rem; line-height:1.30; font-weight:700}
+    #letter ul,#letter ol{margin:.25em 0 .50em 1.15em}
+    #letter li{margin:.06em 0}
+    #letter hr{border:0; border-top:1px solid var(--border); margin:10px 0}
+    #letter blockquote{
+      margin:.50em 0; padding:.42em .68em; background:var(--code);
+      border-left:2px solid var(--border); border-radius:10px;
+    }
+    #letter blockquote p{margin:.22em 0}
 
-  /* Markdown tuning (compact, ChatGPT-ish) */
-  #letter{white-space:pre-wrap}
-  #letter p{margin:0 0 .7em}
-  #letter h2{margin:1.1em 0 .45em; font-size:1.15rem}
-  #letter h3{margin:.9em 0 .4em; font-size:1.02rem}
-  #letter ul,#letter ol{margin:.35em 0 .6em 1.2em}
-  #letter li{margin:.12em 0}
-  #letter hr{border:0; border-top:1px solid var(--border); margin:14px 0}
-
-  /* Quote box smaller + tighter */
-  #letter blockquote{
-    margin:.8em 0; padding:.55em .8em; background:var(--code);
-    border-left:3px solid var(--border); border-radius:10px;
-  }
-  #letter blockquote p{margin:.35em 0}
-  a{color:var(--link); text-decoration:underline}
-</style>
+    a{color:var(--link); text-decoration:underline}
+    .actions{display:flex; gap:14px; flex-wrap:wrap}
+    .btn{display:inline-flex; align-items:center; gap:.5ch; padding:.55rem .8rem; border:1px solid var(--border);
+         border-radius:10px; background:transparent; color:var(--text); text-decoration:none}
+    .btn:hover{border-color:var(--link)}
+  </style>
 </head>
 <body>
   <div class="shell">
@@ -59,6 +66,7 @@
         <span>Author key fingerprint: <code>2C101FA70F42F93052F82FC755387365B7949796</code></span>
       </div>
     </header>
+
     <main>
       <article id="letter">Loading…</article>
       <hr>
@@ -75,10 +83,10 @@
     fetch('letter.md')
       .then(r => r.text())
       .then(md => {
-        const html = marked.parse(md);
         const el = document.getElementById('letter');
-        el.innerHTML = html;
-        // Post-process the exact sign-off to add spacing without changing the .md
+        el.innerHTML = marked.parse(md);
+
+        // Keep your sign-off spacing without changing the .md
         el.innerHTML = el.innerHTML
           .replace('Until we meet— ', 'Until we meet—&ensp;')
           .replace('Alice Sabrina Ivy she/her', 'Alice Sabrina Ivy&nbsp;she/her');
