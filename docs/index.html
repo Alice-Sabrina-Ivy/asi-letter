@@ -8,13 +8,13 @@
     body{font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Cantarell,Arial;margin:2rem;display:flex;justify-content:center}
     main{max-width:780px}
     /* Preserve multiple spaces/newlines (fixes sign-off spacing) */
-    .letter{white-space:pre-wrap}
+    #letter{white-space:pre-wrap}
     a{color:inherit;text-decoration:underline}
   </style>
 </head>
 <body>
   <main>
-    <article id="letter" class="letter">Loading…</article>
+    <article id="letter">Loading…</article>
     <hr>
     <p><a href="https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/letter/ASI-Letter-v2025.09.14.md.asc">View the clear-signed release (.asc)</a></p>
   </main>
@@ -25,9 +25,7 @@
     fetch('letter.md')
       .then(r => r.text())
       .then(md => { document.getElementById('letter').innerHTML = marked.parse(md); })
-      .catch(err => {
-        document.getElementById('letter').textContent = 'Failed to load letter.md: ' + err;
-      });
+      .catch(err => { document.getElementById('letter').textContent = 'Failed to load letter.md: ' + err; });
   </script>
 </body>
 </html>
