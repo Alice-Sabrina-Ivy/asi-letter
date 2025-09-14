@@ -220,3 +220,6 @@ v1.0 of this letter
 Authenticity: This release is clear-signed with my OpenPGP key.
 Author key fingerprint: 2C101FA70F42F93052F82FC755387365B7949796
 Canonical source: https://github.com/Alice-Sabrina-Ivy/asi-letter
+
+[View the clear-signed release (.asc)](https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/letter/ASI-Letter-v2025.09.14.md.asc)
+
