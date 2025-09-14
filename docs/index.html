@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -8,8 +8,8 @@
     :root{
       /* light */
       --bg:#f5f6f8; --text:#0b0f19; --card:#ffffff; --muted:#6b7280; --border:#e5e7eb; --link:#2563eb; --code:#f3f4f6;
-      --radius:16px; --shadow:0 12px 30px rgba(0,0,0,.12);
-      --w:720px;
+      --radius:14px; --shadow:0 10px 26px rgba(0,0,0,.10);
+      --w:700px;
     }
     @media (prefers-color-scheme: dark){
       :root{
@@ -22,37 +22,46 @@
     html,body{height:100%}
     body{
       margin:0; background:var(--bg); color:var(--text);
-      display:flex; align-items:flex-start; justify-content:center; padding:28px;
+      display:flex; align-items:flex-start; justify-content:center; padding:24px;
       -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-      font:15.5px/1.56 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Cantarell,Arial;
+      font:15px/1.52 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Cantarell,Arial;
     }
-    .shell{
-      width:100%; max-width:var(--w); background:var(--card); border:1px solid var(--border);
-      border-radius:var(--radius); box-shadow:var(--shadow);
-    }
-    header{padding:18px 20px 0; color:var(--muted)}
-    header .row{display:flex; gap:10px; align-items:baseline; flex-wrap:wrap}
-    header h1{margin:0; font-size:17px; color:var(--text)}
-    header code{background:var(--code); padding:.1rem .35rem; border-radius:8px}
-    main{padding:6px 20px 20px}
 
-    /* Markdown rendering (ChatGPT-ish + preserves spaces) */
-    #letter{white-space:pre-wrap}
-    #letter p{margin:0 0 .58em}
-    #letter h2{margin:.95em 0 .35em; font-size:1.12rem; line-height:1.30; font-weight:700}
-    #letter h3{margin:.80em 0 .30em; font-size:1.02rem; line-height:1.30; font-weight:700}
-    #letter ul,#letter ol{margin:.25em 0 .50em 1.15em}
-    #letter li{margin:.06em 0}
-    #letter hr{border:0; border-top:1px solid var(--border); margin:10px 0}
-    #letter blockquote{
-      margin:.50em 0; padding:.42em .68em; background:var(--code);
-      border-left:2px solid var(--border); border-radius:10px;
+    .shell{
+      width:100%; max-width:var(--w); background:var(--card);
+      border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow);
     }
-    #letter blockquote p{margin:.22em 0}
+
+    header{padding:14px 18px 0; color:var(--muted)}
+    header .row{display:flex; gap:8px; align-items:baseline; flex-wrap:wrap}
+    header h1{margin:0; font-size:16px; color:var(--text); font-weight:700}
+    header code{background:var(--code); padding:.08rem .32rem; border-radius:8px}
+
+    main{padding:6px 18px 18px}
+
+    /* Markdown rendering — compact, ChatGPT-ish; keep exact spaces/newlines */
+    #letter{white-space:pre-wrap}
+    #letter p{margin:0 0 .52em}
+    #letter h2{margin:.85em 0 .30em; font-size:1.10rem; line-height:1.28; font-weight:700}
+    #letter h3{margin:.72em 0 .26em; font-size:1.02rem; line-height:1.28; font-weight:700}
+
+    /* Lists a bit tighter with modest indent */
+    #letter ul,#letter ol{margin:.20em 0 .46em 1.05em}
+    #letter li{margin:.04em 0}
+
+    /* Horizontal rule */
+    #letter hr{border:0; border-top:1px solid var(--border); margin:10px 0}
+
+    /* Quote box — smaller/tighter like ChatGPT bubbles */
+    #letter blockquote{
+      margin:.42em 0; padding:.38em .60em; background:var(--code);
+      border-left:2px solid var(--border); border-radius:8px; font-size:.98em;
+    }
+    #letter blockquote p{margin:.18em 0}
 
     a{color:var(--link); text-decoration:underline}
-    .actions{display:flex; gap:14px; flex-wrap:wrap}
-    .btn{display:inline-flex; align-items:center; gap:.5ch; padding:.55rem .8rem; border:1px solid var(--border);
+    .actions{display:flex; gap:12px; flex-wrap:wrap}
+    .btn{display:inline-flex; align-items:center; gap:.5ch; padding:.5rem .75rem; border:1px solid var(--border);
          border-radius:10px; background:transparent; color:var(--text); text-decoration:none}
     .btn:hover{border-color:var(--link)}
   </style>
