@@ -45,13 +45,18 @@
     .markdown-body hr{height:1px; border:0; background:var(--border)}
     .markdown-body table{border-collapse:collapse; width:100%}
     .markdown-body table th,.markdown-body table td{border:1px solid var(--border); padding:.5rem; vertical-align:top}
+
+    /* Normalized signature style (applied after render) */
     .signature{margin-top:32px; padding-top:16px; border-top:1px solid var(--border)}
     .signature p{margin:4px 0}
     .signature .pronouns{color:var(--muted)}
+
+    /* Compact variant via ?v=compact5 */
     body[data-variant^="compact"] .container{max-width:760px}
     body[data-variant^="compact"] .markdown-body{line-height:1.65}
     body[data-variant^="compact"] .markdown-body h1{font-size:1.65rem}
     body[data-variant^="compact"] .markdown-body h2{font-size:1.25rem}
+
     @media (max-width:640px){.container{margin:24px auto}}
     .loading{color:var(--muted); font-style:italic}
     .error{color:#b91c1c}
@@ -61,14 +66,6 @@
   <main class="container">
     <article class="markdown-body">
       <div id="md" class="loading">Loading letter…</div>
-
-      <!-- Single authoritative signature (3 lines) -->
-      <footer class="signature" id="footer-signature">
-        <p>Until we meet—</p>
-        <p>Alice Sabrina Ivy</p>
-        <p class="pronouns">she/her</p>
-      </footer>
-
       <noscript>
         <p class="error">JavaScript is required to render the letter. You can read it directly in <a href="https://github.com/Alice-Sabrina-Ivy/asi-letter/blob/main/docs/letter.md" rel="noopener">docs/letter.md</a>.</p>
       </noscript>
@@ -82,50 +79,71 @@
       if (v) document.body.dataset.variant = v;
 
       const mdEl = document.getElementById('md');
-      const footerSig = document.getElementById('footer-signature');
 
-      // Helpers
+      // --- Helpers ---
       const isLikelyHTML = (txt) => /^\s*<(!doctype|html|head|body)[\s>]/i.test(txt);
+      const collapse = (s) => s.replace(/\s+/g,' ').trim().toLowerCase();
 
-      // Remove signature text from raw Markdown (handles 1-line or 3-line forms at EOF)
-      function stripSignatureFromMarkdown(md){
-        const threeLine = /(?:\r?\n){1,3}\s*Until we meet[—\-–]?\s*(?:\r?\n)+\s*Alice Sabrina Ivy\s*(?:\r?\n)+\s*she\/her\s*$/i;
-        const oneLine  = /(?:\r?\n){1,3}\s*Until we meet[—\-–]?\s*Alice Sabrina Ivy(?:\s+she\/her)?\s*$/i;
-        let out = md.replace(threeLine, '').replace(oneLine, '');
-        return out.replace(/\s+$/,''); // trim end
+      function decodeBase64Utf8(b64){
+        const bin = atob(b64.replace(/\n/g,''));
+        const bytes = new Uint8Array(bin.length);
+        for (let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+        return new TextDecoder('utf-8').decode(bytes);
+      }
+
+      // Normalize any inline signature into a single 3-line footer
+      function normalizeSignatureInHTML(container){
+        const oneLineRe = /^until we meet(?:\s*(?:—|–|-|â))?\s+alice\s+sabrina\s+ivy(?:\s+she\/her)?$/i;
+
+        // 1) Convert 1-line signature paragraph into 3-line footer
+        const ps = Array.from(container.querySelectorAll('p'));
+        for (const p of ps){
+          if (oneLineRe.test(collapse(p.textContent))){
+            const footer = document.createElement('footer');
+            footer.className = 'signature';
+            footer.innerHTML = `
+              <p>Until we meet—</p>
+              <p>Alice Sabrina Ivy</p>
+              <p class="pronouns">she/her</p>`;
+            p.replaceWith(footer);
+            break; // assume only one needed
+          }
+        }
+
+        // 2) If three consecutive paragraphs form the signature, wrap them once
+        const pAll = Array.from(container.querySelectorAll('p'));
+        for (let i=0; i < pAll.length - 2; i++){
+          const t0 = collapse(pAll[i].textContent);
+          const t1 = collapse(pAll[i+1].textContent);
+          const t2 = collapse(pAll[i+2].textContent);
+          const looksStart = /^until we meet(?:\s*(?:—|–|-|â))?$/.test(t0);
+          if (looksStart && t1 === 'alice sabrina ivy' && (t2 === 'she/her' || t2 === 'she / her')){
+            const footer = document.createElement('footer');
+            footer.className = 'signature';
+            footer.innerHTML = `
+              <p>Until we meet—</p>
+              <p>Alice Sabrina Ivy</p>
+              <p class="pronouns">she/her</p>`;
+            pAll[i].replaceWith(footer);
+            pAll[i+1].remove();
+            pAll[i+2].remove();
+            break;
+          }
+        }
+
+        // 3) De-duplicate: if multiple .signature exist, keep the last one
+        const sigs = container.querySelectorAll('.signature');
+        if (sigs.length > 1){
+          for (let i=0;i<sigs.length-1;i++) sigs[i].remove();
+        }
       }
 
       function renderMarkdown(text){
-        if (!window.marked){ mdEl.textContent = text; return; }
-        const clean = stripSignatureFromMarkdown(text);
-        mdEl.innerHTML = window.marked.parse(clean, { mangle:false, headerIds:true });
+        const html = window.marked.parse(text, { mangle:false, headerIds:true });
+        mdEl.innerHTML = html;
+        // External links
         mdEl.querySelectorAll('a[href^="http"]').forEach(a => { a.rel='noopener'; a.target='_blank'; });
-      }
-
-      // If the fallback fetched pre-rendered HTML, remove any inline signature block there
-      function removeSignatureFromHTML(){
-        const isSigLine = (el, s) => el && el.textContent.trim().toLowerCase() === s;
-        const ps = Array.from(mdEl.querySelectorAll('p'));
-        ps.forEach(p => {
-          const t = p.textContent.trim();
-          if (/^Until we meet[—\-–]?/i.test(t)){
-            const n1 = p.nextElementSibling;
-            const n2 = n1 && n1.nextElementSibling;
-            // Remove 3-line form
-            if (isSigLine(n1, 'alice sabrina ivy') && isSigLine(n2, 'she/her')){
-              p.remove(); n1.remove(); n2.remove();
-            } else if (/alice\s+sabrina\s+ivy/i.test(t)) {
-              // Or 1-line form
-              p.remove();
-            }
-          }
-        });
-      }
-
-      async function fetchText(url){
-        const r = await fetch(url, { cache:'no-cache' });
-        if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
-        return await r.text();
+        normalizeSignatureInHTML(mdEl);
       }
 
       async function fetchGithubContentsAPI(){
@@ -134,9 +152,15 @@
         if (!r.ok) throw new Error('GitHub API: ' + r.status);
         const j = await r.json();
         if (j && j.encoding === 'base64' && j.content){
-          return atob(j.content.replace(/\n/g,''));
+          return decodeBase64Utf8(j.content);
         }
         throw new Error('GitHub API: unexpected response');
+      }
+
+      async function fetchText(url){
+        const r = await fetch(url, { cache:'no-cache' });
+        if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+        return await r.text();
       }
 
       async function load(){
@@ -153,12 +177,11 @@
           try{
             const text = typeof attempt === 'function' ? await attempt() : await fetchText(attempt);
             mdEl.classList.remove('loading');
-
             if (isLikelyHTML(text)){
-              mdEl.innerHTML = text;
-              removeSignatureFromHTML();     // kill inline sig if present
-            } else {
-              renderMarkdown(text);          // strips sig from MD before rendering
+              mdEl.innerHTML = text;                 // fallback: pre-rendered HTML
+              normalizeSignatureInHTML(mdEl);        // still normalize/remove dupes
+            }else{
+              renderMarkdown(text);                   // Markdown → HTML + normalize
             }
             return;
           }catch(e){ /* try next */ }
