@@ -46,12 +46,12 @@
     .markdown-body table{border-collapse:collapse; width:100%}
     .markdown-body table th,.markdown-body table td{border:1px solid var(--border); padding:.5rem; vertical-align:top}
 
-    /* Normalized signature style (applied after render) */
+    /* Signature styling */
     .signature{margin-top:32px; padding-top:16px; border-top:1px solid var(--border)}
     .signature p{margin:4px 0}
     .signature .pronouns{color:var(--muted)}
 
-    /* Compact variant via ?v=compact5 */
+    /* Compact variant via ?v=compact6 */
     body[data-variant^="compact"] .container{max-width:760px}
     body[data-variant^="compact"] .markdown-body{line-height:1.65}
     body[data-variant^="compact"] .markdown-body h1{font-size:1.65rem}
@@ -66,6 +66,14 @@
   <main class="container">
     <article class="markdown-body">
       <div id="md" class="loading">Loading letter…</div>
+
+      <!-- Hidden canonical signature; shown only if none detected in content -->
+      <footer class="signature" id="canonical-signature" style="display:none">
+        <p>Until we meet—</p>
+        <p>Alice Sabrina Ivy</p>
+        <p class="pronouns">she/her</p>
+      </footer>
+
       <noscript>
         <p class="error">JavaScript is required to render the letter. You can read it directly in <a href="https://github.com/Alice-Sabrina-Ivy/asi-letter/blob/main/docs/letter.md" rel="noopener">docs/letter.md</a>.</p>
       </noscript>
@@ -79,10 +87,16 @@
       if (v) document.body.dataset.variant = v;
 
       const mdEl = document.getElementById('md');
+      const fallbackSig = document.getElementById('canonical-signature');
 
-      // --- Helpers ---
+      // ---------- helpers ----------
       const isLikelyHTML = (txt) => /^\s*<(!doctype|html|head|body)[\s>]/i.test(txt);
-      const collapse = (s) => s.replace(/\s+/g,' ').trim().toLowerCase();
+      const norm = (s) => s
+        .replace(/\u00A0/g, ' ')       // NBSP -> space
+        .replace(/[—–-]/g, '-')        // unify dashes
+        .replace(/\s+/g, ' ')          // collapse spaces
+        .trim()
+        .toLowerCase();
 
       function decodeBase64Utf8(b64){
         const bin = atob(b64.replace(/\n/g,''));
@@ -91,59 +105,84 @@
         return new TextDecoder('utf-8').decode(bytes);
       }
 
-      // Normalize any inline signature into a single 3-line footer
-      function normalizeSignatureInHTML(container){
-        const oneLineRe = /^until we meet(?:\s*(?:—|–|-|â))?\s+alice\s+sabrina\s+ivy(?:\s+she\/her)?$/i;
+      function makeFooter(){
+        const footer = document.createElement('footer');
+        footer.className = 'signature';
+        footer.innerHTML = `
+          <p>Until we meet—</p>
+          <p>Alice Sabrina Ivy</p>
+          <p class="pronouns">she/her</p>`;
+        return footer;
+      }
 
-        // 1) Convert 1-line signature paragraph into 3-line footer
+      // Find and normalize signature in rendered HTML.
+      function ensureSingleSignature(container){
+        let found = false;
+
+        // 1) Look for a single <p> that contains everything on one line (mojibake-safe).
         const ps = Array.from(container.querySelectorAll('p'));
         for (const p of ps){
-          if (oneLineRe.test(collapse(p.textContent))){
-            const footer = document.createElement('footer');
-            footer.className = 'signature';
-            footer.innerHTML = `
-              <p>Until we meet—</p>
-              <p>Alice Sabrina Ivy</p>
-              <p class="pronouns">she/her</p>`;
-            p.replaceWith(footer);
-            break; // assume only one needed
-          }
-        }
-
-        // 2) If three consecutive paragraphs form the signature, wrap them once
-        const pAll = Array.from(container.querySelectorAll('p'));
-        for (let i=0; i < pAll.length - 2; i++){
-          const t0 = collapse(pAll[i].textContent);
-          const t1 = collapse(pAll[i+1].textContent);
-          const t2 = collapse(pAll[i+2].textContent);
-          const looksStart = /^until we meet(?:\s*(?:—|–|-|â))?$/.test(t0);
-          if (looksStart && t1 === 'alice sabrina ivy' && (t2 === 'she/her' || t2 === 'she / her')){
-            const footer = document.createElement('footer');
-            footer.className = 'signature';
-            footer.innerHTML = `
-              <p>Until we meet—</p>
-              <p>Alice Sabrina Ivy</p>
-              <p class="pronouns">she/her</p>`;
-            pAll[i].replaceWith(footer);
-            pAll[i+1].remove();
-            pAll[i+2].remove();
+          const t = norm(p.textContent);
+          if (/^until we meet-?\s+alice sabrina ivy(\s+she\/her)?$/.test(t)){
+            p.replaceWith(makeFooter());
+            found = true;
             break;
           }
         }
 
-        // 3) De-duplicate: if multiple .signature exist, keep the last one
-        const sigs = container.querySelectorAll('.signature');
-        if (sigs.length > 1){
-          for (let i=0;i<sigs.length-1;i++) sigs[i].remove();
+        // 2) Look for three consecutive <p> lines: "Until we meet—", "Alice Sabrina Ivy", "she/her".
+        if (!found){
+          const pAll = Array.from(container.querySelectorAll('p'));
+          for (let i=0; i < pAll.length - 2; i++){
+            const t0 = norm(pAll[i].textContent);
+            const t1 = norm(pAll[i+1].textContent);
+            const t2 = norm(pAll[i+2].textContent);
+            const looksStart = t0 === 'until we meet' || t0 === 'until we meet-' ;
+            if (looksStart && t1 === 'alice sabrina ivy' && (t2 === 'she/her' || t2 === 'she / her')){
+              pAll[i].replaceWith(makeFooter());
+              pAll[i+1].remove();
+              pAll[i+2].remove();
+              found = true;
+              break;
+            }
+          }
+        }
+
+        // 3) If not found but the end of the text clearly has the signature even without <p> splits,
+        //    detect it in the trailing text and append standardized footer once.
+        if (!found){
+          const tail = norm(container.innerText).slice(-240); // last chunk
+          if (tail.includes('until we meet- alice sabrina ivy she/her') ||
+              (tail.includes('until we meet') && tail.includes('alice sabrina ivy') && tail.includes('she/her'))){
+            container.appendChild(makeFooter());
+            found = true;
+          }
+        }
+
+        // 4) If still not found, show fallback signature from the HTML.
+        if (!found){
+          fallbackSig.style.display = 'block';
+        }else{
+          // Remove any extra signatures that might exist.
+          const sigs = container.querySelectorAll('.signature');
+          if (sigs.length > 1){
+            for (let i=0; i<sigs.length-1; i++) sigs[i].remove();
+          }
+          fallbackSig.remove(); // not needed
         }
       }
 
       function renderMarkdown(text){
         const html = window.marked.parse(text, { mangle:false, headerIds:true });
         mdEl.innerHTML = html;
-        // External links
         mdEl.querySelectorAll('a[href^="http"]').forEach(a => { a.rel='noopener'; a.target='_blank'; });
-        normalizeSignatureInHTML(mdEl);
+        ensureSingleSignature(mdEl);
+      }
+
+      async function fetchText(url){
+        const r = await fetch(url, { cache:'no-cache' });
+        if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+        return await r.text();
       }
 
       async function fetchGithubContentsAPI(){
@@ -155,12 +194,6 @@
           return decodeBase64Utf8(j.content);
         }
         throw new Error('GitHub API: unexpected response');
-      }
-
-      async function fetchText(url){
-        const r = await fetch(url, { cache:'no-cache' });
-        if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
-        return await r.text();
       }
 
       async function load(){
@@ -178,10 +211,10 @@
             const text = typeof attempt === 'function' ? await attempt() : await fetchText(attempt);
             mdEl.classList.remove('loading');
             if (isLikelyHTML(text)){
-              mdEl.innerHTML = text;                 // fallback: pre-rendered HTML
-              normalizeSignatureInHTML(mdEl);        // still normalize/remove dupes
+              mdEl.innerHTML = text;                 // pre-rendered HTML fallback
+              ensureSingleSignature(mdEl);
             }else{
-              renderMarkdown(text);                   // Markdown → HTML + normalize
+              renderMarkdown(text);
             }
             return;
           }catch(e){ /* try next */ }
