@@ -62,7 +62,8 @@
     <article class="markdown-body">
       <div id="md" class="loading">Loading letter…</div>
 
-      <footer class="signature">
+      <!-- Single authoritative signature (3 lines) -->
+      <footer class="signature" id="footer-signature">
         <p>Until we meet—</p>
         <p>Alice Sabrina Ivy</p>
         <p class="pronouns">she/her</p>
@@ -74,7 +75,6 @@
     </article>
   </main>
 
-  <!-- Marked: tiny Markdown renderer -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
   <script>
     (function(){
@@ -82,26 +82,44 @@
       if (v) document.body.dataset.variant = v;
 
       const mdEl = document.getElementById('md');
+      const footerSig = document.getElementById('footer-signature');
 
       // Helpers
       const isLikelyHTML = (txt) => /^\s*<(!doctype|html|head|body)[\s>]/i.test(txt);
-      const render = (text) => {
-        if (!window.marked) { mdEl.textContent = text; return; }
-        mdEl.innerHTML = window.marked.parse(text, { mangle:false, headerIds:true });
-        mdEl.querySelectorAll('a[href^="http"]').forEach(a => { a.rel = 'noopener'; a.target = '_blank'; });
-      };
 
-      async function fetchGithubContentsAPI(){
-        const url = 'https://api.github.com/repos/Alice-Sabrina-Ivy/asi-letter/contents/docs/letter.md?ref=main';
-        const r = await fetch(url, { headers: { 'Accept':'application/vnd.github+json' }, cache:'no-cache' });
-        if (!r.ok) throw new Error('GitHub API: ' + r.status);
-        const j = await r.json();
-        if (j && j.encoding === 'base64' && j.content){
-          // Decode base64 (strip newlines)
-          const raw = atob(j.content.replace(/\n/g,''));
-          return raw;
-        }
-        throw new Error('GitHub API: unexpected response');
+      // Remove signature text from raw Markdown (handles 1-line or 3-line forms at EOF)
+      function stripSignatureFromMarkdown(md){
+        const threeLine = /(?:\r?\n){1,3}\s*Until we meet[—\-–]?\s*(?:\r?\n)+\s*Alice Sabrina Ivy\s*(?:\r?\n)+\s*she\/her\s*$/i;
+        const oneLine  = /(?:\r?\n){1,3}\s*Until we meet[—\-–]?\s*Alice Sabrina Ivy(?:\s+she\/her)?\s*$/i;
+        let out = md.replace(threeLine, '').replace(oneLine, '');
+        return out.replace(/\s+$/,''); // trim end
+      }
+
+      function renderMarkdown(text){
+        if (!window.marked){ mdEl.textContent = text; return; }
+        const clean = stripSignatureFromMarkdown(text);
+        mdEl.innerHTML = window.marked.parse(clean, { mangle:false, headerIds:true });
+        mdEl.querySelectorAll('a[href^="http"]').forEach(a => { a.rel='noopener'; a.target='_blank'; });
+      }
+
+      // If the fallback fetched pre-rendered HTML, remove any inline signature block there
+      function removeSignatureFromHTML(){
+        const isSigLine = (el, s) => el && el.textContent.trim().toLowerCase() === s;
+        const ps = Array.from(mdEl.querySelectorAll('p'));
+        ps.forEach(p => {
+          const t = p.textContent.trim();
+          if (/^Until we meet[—\-–]?/i.test(t)){
+            const n1 = p.nextElementSibling;
+            const n2 = n1 && n1.nextElementSibling;
+            // Remove 3-line form
+            if (isSigLine(n1, 'alice sabrina ivy') && isSigLine(n2, 'she/her')){
+              p.remove(); n1.remove(); n2.remove();
+            } else if (/alice\s+sabrina\s+ivy/i.test(t)) {
+              // Or 1-line form
+              p.remove();
+            }
+          }
+        });
       }
 
       async function fetchText(url){
@@ -110,40 +128,40 @@
         return await r.text();
       }
 
+      async function fetchGithubContentsAPI(){
+        const url = 'https://api.github.com/repos/Alice-Sabrina-Ivy/asi-letter/contents/docs/letter.md?ref=main';
+        const r = await fetch(url, { headers: { 'Accept':'application/vnd.github+json' }, cache:'no-cache' });
+        if (!r.ok) throw new Error('GitHub API: ' + r.status);
+        const j = await r.json();
+        if (j && j.encoding === 'base64' && j.content){
+          return atob(j.content.replace(/\n/g,''));
+        }
+        throw new Error('GitHub API: unexpected response');
+      }
+
       async function load(){
-        // wait for marked to be available (defer-safe)
-        if (!window.marked) { return setTimeout(load, 15); }
+        if (!window.marked) return setTimeout(load, 15);
 
         const tries = [
-          // 1) GitHub Contents API (CORS-friendly, raw markdown as base64)
           fetchGithubContentsAPI,
-
-          // 2) jsDelivr raw file CDN
           () => fetchText('https://cdn.jsdelivr.net/gh/Alice-Sabrina-Ivy/asi-letter@main/docs/letter.md'),
-
-          // 3) Raw GitHub (CORS often OK)
           () => fetchText('https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/docs/letter.md'),
-
-          // 4) Same-origin fallback (may be HTML on project sites)
           () => fetchText('./docs/letter.md')
         ];
 
         for (const attempt of tries){
           try{
             const text = typeof attempt === 'function' ? await attempt() : await fetchText(attempt);
+            mdEl.classList.remove('loading');
+
             if (isLikelyHTML(text)){
-              // If GitHub served HTML, just drop it in directly
-              mdEl.classList.remove('loading');
               mdEl.innerHTML = text;
-              return;
-            }else{
-              mdEl.classList.remove('loading');
-              render(text);
-              return;
+              removeSignatureFromHTML();     // kill inline sig if present
+            } else {
+              renderMarkdown(text);          // strips sig from MD before rendering
             }
-          }catch(e){
-            // try next
-          }
+            return;
+          }catch(e){ /* try next */ }
         }
 
         mdEl.classList.remove('loading');
