@@ -10,11 +10,20 @@
       --w:900px; --pad-x:24px; --lh:1.7;
       --bg:#f6f7f9; --text:#0b0f19; --muted:#475569; --border:#e5e7eb;
       --link:#0969da; --code-bg:#f6f8fa; --code-border:#d0d7de;
+
+      /* Buttons */
+      --btn-bg:#ffffff; --btn-border:#e5e7eb; --btn-hover:rgba(0,0,0,.04);
+      --btn-text: var(--text);
+      --btn-primary-bg: var(--link); --btn-primary-text:#ffffff;
     }
     @media (prefers-color-scheme: dark){
       :root{
         --bg:#0b0f19; --text:#c9d1d9; --muted:#9aa4b2; --border:#30363d;
         --link:#58a6ff; --code-bg:#0d1117; --code-border:#30363d;
+
+        --btn-bg:#111827; --btn-border:#374151; --btn-hover:rgba(255,255,255,.06);
+        --btn-text: var(--text);
+        --btn-primary-bg: var(--link); --btn-primary-text:#0b1020;
       }
     }
     html,body{height:100%}
@@ -46,12 +55,33 @@
     .markdown-body table{border-collapse:collapse; width:100%}
     .markdown-body table th,.markdown-body table td{border:1px solid var(--border); padding:.5rem; vertical-align:top}
 
-    /* Signature styling */
+    /* Signature */
     .signature{margin-top:32px; padding-top:16px; border-top:1px solid var(--border)}
     .signature p{margin:4px 0}
     .signature .pronouns{color:var(--muted)}
 
-    /* Compact variant via ?v=compact6 */
+    /* CTA Button Bar */
+    .cta-bar{
+      display:flex; flex-wrap:wrap; align-items:center; gap:12px;
+      margin-top:20px;
+    }
+    .btn{
+      display:inline-flex; align-items:center; gap:.55rem;
+      padding:.6rem .95rem; border-radius:9999px; border:1px solid var(--btn-border);
+      background:var(--btn-bg); color:var(--btn-text); text-decoration:none; font-weight:500;
+      box-shadow:0 1px 0 rgba(0,0,0,.05);
+      transition:transform .04s ease-out, box-shadow .12s ease-out, background .12s ease-out;
+    }
+    .btn:hover{ background:var(--btn-hover); text-decoration:none; transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.12) }
+    .btn:active{ transform:translateY(0); box-shadow:none }
+    .btn svg{ width:1.05em; height:1.05em; }
+    .btn-primary{
+      background:var(--btn-primary-bg); color:var(--btn-primary-text);
+      border-color:transparent;
+    }
+    .btn-primary:hover{ filter:brightness(0.95) }
+
+    /* Variant */
     body[data-variant^="compact"] .container{max-width:760px}
     body[data-variant^="compact"] .markdown-body{line-height:1.65}
     body[data-variant^="compact"] .markdown-body h1{font-size:1.65rem}
@@ -67,12 +97,26 @@
     <article class="markdown-body">
       <div id="md" class="loading">Loading letter…</div>
 
-      <!-- Hidden canonical signature; shown only if none detected in content -->
+      <!-- Hidden canonical signature; shown only if none detected -->
       <footer class="signature" id="canonical-signature" style="display:none">
         <p>Until we meet—</p>
         <p>Alice Sabrina Ivy</p>
         <p class="pronouns">she/her</p>
       </footer>
+
+      <!-- CTA bar (revealed and positioned by JS after render) -->
+      <nav class="cta-bar" id="cta-bar" hidden>
+        <a class="btn btn-primary" id="btn-repo" href="https://github.com/Alice-Sabrina-Ivy/asi-letter" target="_blank" rel="noopener" aria-label="Open repository on GitHub">
+          <!-- GitHub mark -->
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.64 0 8.13c0 3.6 2.29 6.65 5.47 7.73.4.08.55-.18.55-.39 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.5-2.69-.96-.09-.23-.48-.96-.82-1.15-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.53.28-.87.51-1.07-1.78-.2-3.64-.91-3.64-4.05 0-.9.31-1.64.82-2.22-.08-.2-.36-1.02.08-2.12 0 0 .67-.22 2.2.85.64-.18 1.33-.27 2.01-.27.68 0 1.37.09 2.01.27 1.53-1.07 2.2-.85 2.2-.85.44 1.1.16 1.92.08 2.12.51.58.82 1.32.82 2.22 0 3.15-1.87 3.85-3.65 4.05.29.26.54.77.54 1.55 0 1.12-.01 2.03-.01 2.31 0 .21.15.47.55.39A8.06 8.06 0 0 0 16 8.13C16 3.64 12.42 0 8 0Z"/></svg>
+          <span>Canonical source</span>
+        </a>
+        <a class="btn" id="btn-letter" href="https://github.com/Alice-Sabrina-Ivy/asi-letter/blob/main/docs/letter.md" target="_blank" rel="noopener">
+          <!-- Document icon -->
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4 1h5l4 4v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1Zm5 1.5V5h3.5L9 2.5ZM5 7h6v1.5H5V7Zm0 3h6v1.5H5V10Z"/></svg>
+          <span>Open letter.md</span>
+        </a>
+      </nav>
 
       <noscript>
         <p class="error">JavaScript is required to render the letter. You can read it directly in <a href="https://github.com/Alice-Sabrina-Ivy/asi-letter/blob/main/docs/letter.md" rel="noopener">docs/letter.md</a>.</p>
@@ -88,15 +132,14 @@
 
       const mdEl = document.getElementById('md');
       const fallbackSig = document.getElementById('canonical-signature');
+      const ctaBar = document.getElementById('cta-bar');
+
+      const REPO = 'https://github.com/Alice-Sabrina-Ivy/asi-letter';
+      const LETTER = REPO + '/blob/main/docs/letter.md';
 
       // ---------- helpers ----------
       const isLikelyHTML = (txt) => /^\s*<(!doctype|html|head|body)[\s>]/i.test(txt);
-      const norm = (s) => s
-        .replace(/\u00A0/g, ' ')       // NBSP -> space
-        .replace(/[—–-]/g, '-')        // unify dashes
-        .replace(/\s+/g, ' ')          // collapse spaces
-        .trim()
-        .toLowerCase();
+      const norm = (s) => s.replace(/\u00A0/g,' ').replace(/[—–-]/g,'-').replace(/\s+/g,' ').trim().toLowerCase();
 
       function decodeBase64Utf8(b64){
         const bin = atob(b64.replace(/\n/g,''));
@@ -115,61 +158,57 @@
         return footer;
       }
 
-      // Find and normalize signature in rendered HTML.
       function ensureSingleSignature(container){
         let found = false;
-
-        // 1) Look for a single <p> that contains everything on one line (mojibake-safe).
-        const ps = Array.from(container.querySelectorAll('p'));
-        for (const p of ps){
+        // One-line signature
+        for (const p of container.querySelectorAll('p')){
           const t = norm(p.textContent);
           if (/^until we meet-?\s+alice sabrina ivy(\s+she\/her)?$/.test(t)){
-            p.replaceWith(makeFooter());
-            found = true;
-            break;
+            p.replaceWith(makeFooter()); found = true; break;
           }
         }
-
-        // 2) Look for three consecutive <p> lines: "Until we meet—", "Alice Sabrina Ivy", "she/her".
+        // Three-line signature
         if (!found){
-          const pAll = Array.from(container.querySelectorAll('p'));
-          for (let i=0; i < pAll.length - 2; i++){
-            const t0 = norm(pAll[i].textContent);
-            const t1 = norm(pAll[i+1].textContent);
-            const t2 = norm(pAll[i+2].textContent);
-            const looksStart = t0 === 'until we meet' || t0 === 'until we meet-' ;
-            if (looksStart && t1 === 'alice sabrina ivy' && (t2 === 'she/her' || t2 === 'she / her')){
-              pAll[i].replaceWith(makeFooter());
-              pAll[i+1].remove();
-              pAll[i+2].remove();
-              found = true;
-              break;
+          const all = Array.from(container.querySelectorAll('p'));
+          for (let i=0;i<all.length-2;i++){
+            const t0=norm(all[i].textContent), t1=norm(all[i+1].textContent), t2=norm(all[i+2].textContent);
+            if ((t0==='until we meet'||t0==='until we meet-') && t1==='alice sabrina ivy' && (t2==='she/her'||t2==='she / her')){
+              all[i].replaceWith(makeFooter()); all[i+1].remove(); all[i+2].remove(); found = true; break;
             }
           }
         }
-
-        // 3) If not found but the end of the text clearly has the signature even without <p> splits,
-        //    detect it in the trailing text and append standardized footer once.
         if (!found){
-          const tail = norm(container.innerText).slice(-240); // last chunk
+          const tail = norm(container.innerText).slice(-240);
           if (tail.includes('until we meet- alice sabrina ivy she/her') ||
               (tail.includes('until we meet') && tail.includes('alice sabrina ivy') && tail.includes('she/her'))){
-            container.appendChild(makeFooter());
-            found = true;
+            container.appendChild(makeFooter()); found = true;
           }
         }
+        if (!found){ fallbackSig.style.display='block'; }
+        else { const sigs = container.querySelectorAll('.signature'); if (sigs.length>1){ for(let i=0;i<sigs.length-1;i++) sigs[i].remove(); } fallbackSig.remove(); }
+      }
 
-        // 4) If still not found, show fallback signature from the HTML.
-        if (!found){
-          fallbackSig.style.display = 'block';
-        }else{
-          // Remove any extra signatures that might exist.
-          const sigs = container.querySelectorAll('.signature');
-          if (sigs.length > 1){
-            for (let i=0; i<sigs.length-1; i++) sigs[i].remove();
-          }
-          fallbackSig.remove(); // not needed
+      // Remove "Canonical source: …" paragraph if it exists in the Markdown
+      function removeCanonicalParagraph(container){
+        const paras = Array.from(container.querySelectorAll('p'));
+        for (const p of paras){
+          const t = p.textContent.trim();
+          if (/^canonical source\s*:/i.test(t)) { p.remove(); continue; }
+          const a = p.querySelector('a[href]');
+          if (a && (a.getAttribute('href')===REPO || a.href===REPO)) { p.remove(); }
         }
+      }
+
+      // Place/show the CTA bar under the (possibly normalized) signature
+      function placeCTA(container){
+        ctaBar.hidden = false;
+        // Update hrefs in case REPO/LETTER change someday
+        document.getElementById('btn-repo').href = REPO;
+        document.getElementById('btn-letter').href = LETTER;
+
+        const sig = container.querySelector('.signature');
+        if (sig) sig.insertAdjacentElement('afterend', ctaBar);
+        else container.appendChild(ctaBar);
       }
 
       function renderMarkdown(text){
@@ -177,6 +216,8 @@
         mdEl.innerHTML = html;
         mdEl.querySelectorAll('a[href^="http"]').forEach(a => { a.rel='noopener'; a.target='_blank'; });
         ensureSingleSignature(mdEl);
+        removeCanonicalParagraph(mdEl);
+        placeCTA(mdEl);
       }
 
       async function fetchText(url){
@@ -186,45 +227,37 @@
       }
 
       async function fetchGithubContentsAPI(){
-        const url = 'https://api.github.com/repos/Alice-Sabrina-Ivy/asi-letter/contents/docs/letter.md?ref=main';
+        const url = REPO.replace('https://github.com/','https://api.github.com/repos/') + '/contents/docs/letter.md?ref=main';
         const r = await fetch(url, { headers: { 'Accept':'application/vnd.github+json' }, cache:'no-cache' });
         if (!r.ok) throw new Error('GitHub API: ' + r.status);
         const j = await r.json();
-        if (j && j.encoding === 'base64' && j.content){
-          return decodeBase64Utf8(j.content);
-        }
+        if (j && j.encoding === 'base64' && j.content){ return decodeBase64Utf8(j.content); }
         throw new Error('GitHub API: unexpected response');
       }
 
       async function load(){
         if (!window.marked) return setTimeout(load, 15);
-
         const tries = [
           fetchGithubContentsAPI,
           () => fetchText('https://cdn.jsdelivr.net/gh/Alice-Sabrina-Ivy/asi-letter@main/docs/letter.md'),
           () => fetchText('https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/docs/letter.md'),
           () => fetchText('./docs/letter.md')
         ];
-
         for (const attempt of tries){
           try{
             const text = typeof attempt === 'function' ? await attempt() : await fetchText(attempt);
             mdEl.classList.remove('loading');
-            if (isLikelyHTML(text)){
-              mdEl.innerHTML = text;                 // pre-rendered HTML fallback
-              ensureSingleSignature(mdEl);
-            }else{
-              renderMarkdown(text);
-            }
+            if (isLikelyHTML(text)){ mdEl.innerHTML = text; ensureSingleSignature(mdEl); removeCanonicalParagraph(mdEl); placeCTA(mdEl); }
+            else { renderMarkdown(text); }
             return;
           }catch(e){ /* try next */ }
         }
-
         mdEl.classList.remove('loading');
         mdEl.innerHTML = `
           <p class="error">Could not load <code>docs/letter.md</code>.</p>
-          <p>Open it on GitHub: <a href="https://github.com/Alice-Sabrina-Ivy/asi-letter/blob/main/docs/letter.md" rel="noopener" target="_blank">docs/letter.md</a></p>
+          <p>Open it on GitHub: <a href="${LETTER}" rel="noopener" target="_blank">docs/letter.md</a></p>
         `;
+        placeCTA(mdEl);
       }
 
       load();
