@@ -6,7 +6,6 @@
   <meta name="color-scheme" content="light dark">
   <title>ASI Letter — v2025.09.14</title>
   <style>
-    /* ===== GitHub-ish Markdown + ChatGPT dark background ===== */
     :root{
       --w:900px; --pad-x:24px; --lh:1.7;
       --bg:#f6f7f9; --text:#0b0f19; --muted:#475569; --border:#e5e7eb;
@@ -49,7 +48,6 @@
     .signature{margin-top:32px; padding-top:16px; border-top:1px solid var(--border)}
     .signature p{margin:4px 0}
     .signature .pronouns{color:var(--muted)}
-    /* Compact variants via ?v=compact5 */
     body[data-variant^="compact"] .container{max-width:760px}
     body[data-variant^="compact"] .markdown-body{line-height:1.65}
     body[data-variant^="compact"] .markdown-body h1{font-size:1.65rem}
@@ -84,46 +82,77 @@
       if (v) document.body.dataset.variant = v;
 
       const mdEl = document.getElementById('md');
-      const candidates = [
-        './docs/letter.md',                 // GitHub Pages often serves /docs
-        './letter.md',                      // fallback if root
-        'https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/docs/letter.md' // final fallback
-      ];
 
-      async function tryFetch(url){
-        try{
-          const r = await fetch(url, {cache:'no-cache'});
-          if(!r.ok) throw new Error(r.status + ' ' + r.statusText);
-          return await r.text();
-        }catch(e){
-          return null;
+      // Helpers
+      const isLikelyHTML = (txt) => /^\s*<(!doctype|html|head|body)[\s>]/i.test(txt);
+      const render = (text) => {
+        if (!window.marked) { mdEl.textContent = text; return; }
+        mdEl.innerHTML = window.marked.parse(text, { mangle:false, headerIds:true });
+        mdEl.querySelectorAll('a[href^="http"]').forEach(a => { a.rel = 'noopener'; a.target = '_blank'; });
+      };
+
+      async function fetchGithubContentsAPI(){
+        const url = 'https://api.github.com/repos/Alice-Sabrina-Ivy/asi-letter/contents/docs/letter.md?ref=main';
+        const r = await fetch(url, { headers: { 'Accept':'application/vnd.github+json' }, cache:'no-cache' });
+        if (!r.ok) throw new Error('GitHub API: ' + r.status);
+        const j = await r.json();
+        if (j && j.encoding === 'base64' && j.content){
+          // Decode base64 (strip newlines)
+          const raw = atob(j.content.replace(/\n/g,''));
+          return raw;
         }
+        throw new Error('GitHub API: unexpected response');
+      }
+
+      async function fetchText(url){
+        const r = await fetch(url, { cache:'no-cache' });
+        if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+        return await r.text();
       }
 
       async function load(){
-        // wait for marked to be available
-        if (!window.marked){ return setTimeout(load, 10); }
-        for (const url of candidates){
-          const text = await tryFetch(url);
-          if (text){
-            // Render like GitHub (IDs on headings, no email mangling)
-            const html = window.marked.parse(text, {mangle:false, headerIds:true});
-            mdEl.classList.remove('loading');
-            mdEl.innerHTML = html;
-            // Ensure external links open safely
-            mdEl.querySelectorAll('a[href^="http"]').forEach(a=>{
-              a.rel = 'noopener';
-              a.target = '_blank';
-            });
-            return;
+        // wait for marked to be available (defer-safe)
+        if (!window.marked) { return setTimeout(load, 15); }
+
+        const tries = [
+          // 1) GitHub Contents API (CORS-friendly, raw markdown as base64)
+          fetchGithubContentsAPI,
+
+          // 2) jsDelivr raw file CDN
+          () => fetchText('https://cdn.jsdelivr.net/gh/Alice-Sabrina-Ivy/asi-letter@main/docs/letter.md'),
+
+          // 3) Raw GitHub (CORS often OK)
+          () => fetchText('https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/docs/letter.md'),
+
+          // 4) Same-origin fallback (may be HTML on project sites)
+          () => fetchText('./docs/letter.md')
+        ];
+
+        for (const attempt of tries){
+          try{
+            const text = typeof attempt === 'function' ? await attempt() : await fetchText(attempt);
+            if (isLikelyHTML(text)){
+              // If GitHub served HTML, just drop it in directly
+              mdEl.classList.remove('loading');
+              mdEl.innerHTML = text;
+              return;
+            }else{
+              mdEl.classList.remove('loading');
+              render(text);
+              return;
+            }
+          }catch(e){
+            // try next
           }
         }
+
         mdEl.classList.remove('loading');
         mdEl.innerHTML = `
-          <p class="error">Could not load <code>letter.md</code>.</p>
+          <p class="error">Could not load <code>docs/letter.md</code>.</p>
           <p>Open it on GitHub: <a href="https://github.com/Alice-Sabrina-Ivy/asi-letter/blob/main/docs/letter.md" rel="noopener" target="_blank">docs/letter.md</a></p>
         `;
       }
+
       load();
     })();
   </script>
