@@ -1,0 +1,11 @@
+name: Verify OpenPGP clear-signed releases
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GnuPG
+        run: sudo apt-get update && sudo apt-get install -y gnupg
+      - name: Verify fingerprints and signatures
+        run: bash scripts/verify-clearsign.sh
