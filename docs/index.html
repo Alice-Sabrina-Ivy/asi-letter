@@ -6,139 +6,126 @@
   <meta name="color-scheme" content="light dark">
   <title>ASI Letter — v2025.09.14</title>
   <style>
-    /* ===== Baseline (GitHub-ish Markdown, ChatGPT dark background) ===== */
+    /* ===== GitHub-ish Markdown + ChatGPT dark background ===== */
     :root{
-      --w: 900px;                   /* GitHub-ish reading width */
-      --pad-x: 24px;
-      --lh: 1.7;
-      --bg: #f6f7f9;                /* light background */
-      --text: #0b0f19;
-      --muted: #475569;
-      --border: #e5e7eb;
-      --link: #0969da;              /* GitHub link hue */
-      --code-bg: #f6f8fa;
-      --code-border: #d0d7de;
+      --w:900px; --pad-x:24px; --lh:1.7;
+      --bg:#f6f7f9; --text:#0b0f19; --muted:#475569; --border:#e5e7eb;
+      --link:#0969da; --code-bg:#f6f8fa; --code-border:#d0d7de;
     }
     @media (prefers-color-scheme: dark){
       :root{
-        --bg: #0b0f19;              /* ChatGPT dark */
-        --text: #c9d1d9;            /* GitHub dark text */
-        --muted: #9aa4b2;
-        --border: #30363d;
-        --link: #58a6ff;            /* GitHub dark link */
-        --code-bg: #0d1117;
-        --code-border: #30363d;
+        --bg:#0b0f19; --text:#c9d1d9; --muted:#9aa4b2; --border:#30363d;
+        --link:#58a6ff; --code-bg:#0d1117; --code-border:#30363d;
       }
     }
-
-    html,body{ height:100%; }
+    html,body{height:100%}
     body{
       margin:0; background:var(--bg); color:var(--text);
-      font: 16px/var(--lh) ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-            Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+      font:16px/var(--lh) ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji";
+      -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
     }
-
-    .container{
-      max-width:var(--w);
-      margin:40px auto;
-      padding:0 var(--pad-x);
+    .container{max-width:var(--w); margin:40px auto; padding:0 var(--pad-x);}
+    .markdown-body{word-wrap:break-word;}
+    .markdown-body h1,.markdown-body h2{
+      border-bottom:1px solid var(--border); padding-bottom:.3em; margin:24px 0 16px; line-height:1.25;
     }
-
-    /* GitHub-like Markdown defaults */
-    .markdown-body{
-      word-wrap:break-word;
-    }
-    .markdown-body h1,
-    .markdown-body h2{
-      border-bottom:1px solid var(--border);
-      padding-bottom:.3em;
-      margin-top:24px; margin-bottom:16px;
-      line-height:1.25;
-    }
-    .markdown-body h1{ font-size:2em; }
-    .markdown-body h2{ font-size:1.5em; }
-    .markdown-body h3{ font-size:1.25em; margin-top:20px; margin-bottom:12px; }
-    .markdown-body p,
-    .markdown-body ul,
-    .markdown-body ol,
-    .markdown-body blockquote,
-    .markdown-body pre{
-      margin-top:16px; margin-bottom:16px;
-    }
-    .markdown-body ul, .markdown-body ol{ padding-left:2em; }
-    .markdown-body a{ color:var(--link); text-decoration:none; }
-    .markdown-body a:hover{ text-decoration:underline; }
-
-    .markdown-body blockquote{
-      border-left: .25em solid var(--border);
-      padding: 0 1em;
-      color: var(--muted);
-    }
-
+    .markdown-body h1{font-size:2em}
+    .markdown-body h2{font-size:1.5em}
+    .markdown-body h3{font-size:1.25em; margin:20px 0 12px}
+    .markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body blockquote,.markdown-body pre,.markdown-body table{margin:16px 0}
+    .markdown-body ul,.markdown-body ol{padding-left:2em}
+    .markdown-body a{color:var(--link); text-decoration:none}
+    .markdown-body a:hover{text-decoration:underline}
+    .markdown-body blockquote{border-left:.25em solid var(--border); padding:0 1em; color:var(--muted)}
     .markdown-body code{
-      font: .95rem/1.6 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      background: var(--code-bg);
-      border: 1px solid var(--code-border);
-      border-radius: 6px;
-      padding: .15em .35em;
+      font:.95rem/1.6 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+      background:var(--code-bg); border:1px solid var(--code-border); border-radius:6px; padding:.15em .35em;
     }
-    .markdown-body pre{
-      background: var(--code-bg);
-      border: 1px solid var(--code-border);
-      border-radius: 6px;
-      padding: 16px;
-      overflow: auto;
-    }
-    .markdown-body pre code{
-      background: transparent; border:0; padding:0;
-      font-size:.9rem; line-height:1.6;
-    }
-
-    .markdown-body hr{
-      height:1px; border:0; background:var(--border);
-    }
-
-    /* Signature: exactly three lines */
-    .signature{
-      margin-top:32px; padding-top:16px; border-top:1px solid var(--border);
-    }
-    .signature p{ margin:4px 0; }
-    .signature .pronouns{ color:var(--muted); }
-
-    /* Compact variants via ?v=compact5 (narrower width, slightly tighter rhythm) */
-    body[data-variant^="compact"] .container{ max-width:760px; }
-    body[data-variant^="compact"] .markdown-body{ line-height:1.65; }
-    body[data-variant^="compact"] .markdown-body h1{ font-size:1.65rem; }
-    body[data-variant^="compact"] .markdown-body h2{ font-size:1.25rem; }
-
-    /* Small screens */
-    @media (max-width: 640px){
-      .container{ margin:24px auto; }
-    }
+    .markdown-body pre{background:var(--code-bg); border:1px solid var(--code-border); border-radius:6px; padding:16px; overflow:auto}
+    .markdown-body pre code{background:transparent; border:0; padding:0; font-size:.9rem; line-height:1.6}
+    .markdown-body hr{height:1px; border:0; background:var(--border)}
+    .markdown-body table{border-collapse:collapse; width:100%}
+    .markdown-body table th,.markdown-body table td{border:1px solid var(--border); padding:.5rem; vertical-align:top}
+    .signature{margin-top:32px; padding-top:16px; border-top:1px solid var(--border)}
+    .signature p{margin:4px 0}
+    .signature .pronouns{color:var(--muted)}
+    /* Compact variants via ?v=compact5 */
+    body[data-variant^="compact"] .container{max-width:760px}
+    body[data-variant^="compact"] .markdown-body{line-height:1.65}
+    body[data-variant^="compact"] .markdown-body h1{font-size:1.65rem}
+    body[data-variant^="compact"] .markdown-body h2{font-size:1.25rem}
+    @media (max-width:640px){.container{margin:24px auto}}
+    .loading{color:var(--muted); font-style:italic}
+    .error{color:#b91c1c}
   </style>
 </head>
 <body>
   <main class="container">
-    <article class="markdown-body" id="letter">
-      <!-- Keep your rendered letter content here (as HTML from your current pipeline).
-           The CSS above makes it render like GitHub’s Markdown. -->
+    <article class="markdown-body">
+      <div id="md" class="loading">Loading letter…</div>
 
-      <!-- … your letter content … -->
-
-      <!-- Signature (forced to three lines) -->
       <footer class="signature">
         <p>Until we meet—</p>
         <p>Alice Sabrina Ivy</p>
         <p class="pronouns">she/her</p>
       </footer>
+
+      <noscript>
+        <p class="error">JavaScript is required to render the letter. You can read it directly in <a href="https://github.com/Alice-Sabrina-Ivy/asi-letter/blob/main/docs/letter.md" rel="noopener">docs/letter.md</a>.</p>
+      </noscript>
     </article>
   </main>
 
+  <!-- Marked: tiny Markdown renderer -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
   <script>
-    // Apply variants like ?v=compact5 to match your existing URLs
-    const v = new URLSearchParams(location.search).get("v");
-    if (v) document.body.dataset.variant = v;
+    (function(){
+      const v = new URLSearchParams(location.search).get("v");
+      if (v) document.body.dataset.variant = v;
+
+      const mdEl = document.getElementById('md');
+      const candidates = [
+        './docs/letter.md',                 // GitHub Pages often serves /docs
+        './letter.md',                      // fallback if root
+        'https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/docs/letter.md' // final fallback
+      ];
+
+      async function tryFetch(url){
+        try{
+          const r = await fetch(url, {cache:'no-cache'});
+          if(!r.ok) throw new Error(r.status + ' ' + r.statusText);
+          return await r.text();
+        }catch(e){
+          return null;
+        }
+      }
+
+      async function load(){
+        // wait for marked to be available
+        if (!window.marked){ return setTimeout(load, 10); }
+        for (const url of candidates){
+          const text = await tryFetch(url);
+          if (text){
+            // Render like GitHub (IDs on headings, no email mangling)
+            const html = window.marked.parse(text, {mangle:false, headerIds:true});
+            mdEl.classList.remove('loading');
+            mdEl.innerHTML = html;
+            // Ensure external links open safely
+            mdEl.querySelectorAll('a[href^="http"]').forEach(a=>{
+              a.rel = 'noopener';
+              a.target = '_blank';
+            });
+            return;
+          }
+        }
+        mdEl.classList.remove('loading');
+        mdEl.innerHTML = `
+          <p class="error">Could not load <code>letter.md</code>.</p>
+          <p>Open it on GitHub: <a href="https://github.com/Alice-Sabrina-Ivy/asi-letter/blob/main/docs/letter.md" rel="noopener" target="_blank">docs/letter.md</a></p>
+        `;
+      }
+      load();
+    })();
   </script>
 </body>
 </html>
