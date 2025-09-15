@@ -1,7 +1,7 @@
 ﻿name: ots-upgrade
 on:
   schedule:
-    - cron: '23 * * * *'   # hourly on default branch
+    - cron: "23 * * * *"   # hourly on default branch
   workflow_dispatch: {}
 
 permissions:
@@ -13,66 +13,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install deps (OTS client + Esplora-backed verifier)
+      - name: Install OpenTimestamps client + alt verifier
         run: |
           python -m pip install --upgrade opentimestamps-client
-          sudo apt-get update && sudo apt-get install -y jq
           wget -q https://go.dev/dl/go1.22.5.linux-amd64.tar.gz
           sudo tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
           echo "/usr/local/go/bin" >> $GITHUB_PATH
           /usr/local/go/bin/go install github.com/fiatjaf/ots@latest
           echo "$HOME/go/bin" >> $GITHUB_PATH
 
-      - name: Extract embedded proof from docs/index.html (<pre> fallback)
-        id: extract
+      - name: Compute current status and update footer line
         shell: bash
         run: |
           set -euo pipefail
           HTML="docs/index.html"
-          if [[ -f "$HTML" ]]; then
-            # Try <script> first (legacy), then <pre>
-            B64="$(awk 'BEGIN{RS="";ORS=""} {if (match($0,/<script id="ots-proof"[^>]*>([^<]*)<\/script>/,m)) print m[1];}' "$HTML")"
-            if [[ -z "$B64" ]]; then
-              B64="$(awk 'BEGIN{RS="";ORS=""} {if (match($0,/<pre id="ots-proof-b64"[^>]*>([^<]*)<\/pre>/,m)) print m[1];}' "$HTML")"
-            fi
-            echo "b64_present=$([[ -n "$B64" ]] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
-            if [[ -n "$B64" ]]; then
-              echo -n "$B64" | base64 -d > /tmp/proof.ots || true
-            fi
-          else
-            echo "b64_present=0" >> "$GITHUB_OUTPUT"
+          [[ -f "$HTML" ]] || { echo "Missing $HTML" >&2; exit 1; }
+
+          HEIGHT=""
+          if [[ -f docs/letter.md.asc ]]; then
+            # Create a transient proof, upgrade it, and read block height
+            ots stamp docs/letter.md.asc
+            mv docs/letter.md.asc.ots /tmp/proof.ots
+            ots upgrade /tmp/proof.ots || true
+
+            set +e
+            OUT="$(ots verify /tmp/proof.ots 2>&1)"
+            ALT="$("$HOME/go/bin/ots" verify /tmp/proof.ots 2>&1)"
+            OUT="$OUT"$'\n'"$ALT"
+            set -e
+            HEIGHT="$(echo "$OUT" | grep -Eo 'block[[:space:]]*\[?[0-9]+\]?' | grep -Eo '[0-9]+' | tail -n1 || true)"
           fi
 
-      - name: Upgrade embedded proof (if present) and update footer text
-        if: steps.extract.outputs.b64_present == '1'
-        shell: bash
-        run: |
-          set -euo pipefail
-          HTML="docs/index.html"
-          ots upgrade /tmp/proof.ots || true
-
-          set +e
-          OUT="$(ots verify /tmp/proof.ots 2>&1)"
-          ALT="$("$HOME/go/bin/ots" verify /tmp/proof.ots 2>&1)"
-          OUT="$OUT"$'\n'"$ALT"
-          set -e
-          HEIGHT="$(echo "$OUT" | grep -Eo 'block[[:space:]]*\[?[0-9]+\]?' | grep -Eo '[0-9]+' | tail -n1 || true)"
-
-          NEW_B64="$(base64 -w0 /tmp/proof.ots)"
-          awk -v b64="$NEW_B64" -v height="$HEIGHT" '
+          awk -v height="$HEIGHT" '
             BEGIN{RS=""; ORS=""}
             {
-              # Update the <pre> content
-              if ($0 ~ /<pre id="ots-proof-b64"/) {
-                gsub(/(<pre id="ots-proof-b64"[^>]*>)[^<]*/,"\\1" b64,$0);
-              }
-              # Refresh the status line
               if (length(height) > 0) {
                 gsub(/<p id="ots-line">.*<\/p>/,
-                     "<p id=\"ots-line\">Bitcoin block <strong>" height "</strong> attests <code>letter.md.asc</code> existed prior to that block.</p>", $0);
+                     "<p id=\"ots-line\">Bitcoin block <strong>" height "</strong> attests the letter existed prior to that block.</p>", $0);
               } else {
-                gsub(/<p id=\"ots-line\">.*<\/p>/,
-                     "<p id=\"ots-line\">Bitcoin anchoring pending for <code>letter.md.asc</code>. Proof will update automatically.</p>", $0);
+                gsub(/<p id="ots-line">.*<\/p>/,
+                     "<p id=\"ots-line\">Bitcoin anchoring pending. Proof will update automatically.</p>", $0);
               }
               print
             }' "$HTML" > "$HTML.tmp"
@@ -80,5 +60,5 @@ jobs:
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore(ots): upgrade embedded <pre> proof + status line [skip ci]"
+          commit_message: "chore(ots): update footer status line (pending → block height) [skip ci]"
           file_pattern: docs/index.html
