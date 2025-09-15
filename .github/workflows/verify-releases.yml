@@ -1,11 +1,24 @@
 name: Verify OpenPGP clear-signed releases
-on: [push, pull_request]
+
+on:
+  push:
+    paths:
+      - 'releases/**/*.asc'
+      - 'scripts/asi-public.asc'
+  workflow_dispatch:
+
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Install GnuPG
         run: sudo apt-get update && sudo apt-get install -y gnupg
+
+      # Optional: pin to the expected fingerprint as an extra guard.
+      # If you don't want to pin, delete the env block.
       - name: Verify fingerprints and signatures
+        env:
+          EXPECTED_FPR: "2C101FA70F42F93052F82FC755387365B7949796"  # <-- your current key (optional)
         run: bash scripts/verify-clearsign.sh
