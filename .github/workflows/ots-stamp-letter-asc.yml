@@ -27,8 +27,8 @@ jobs:
             otsfile="${asc}.ots"
             if [[ ! -f "$otsfile" ]]; then
               echo "Stamping $asc -> $otsfile"
+              # creates "$asc.ots" in-place (no move needed)
               ots stamp "$asc"
-              mv "${asc}.ots" "$otsfile"
               touched=1
             else
               echo "Exists: $otsfile (skipping)"
