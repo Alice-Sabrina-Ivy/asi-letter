@@ -1,10 +1,11 @@
-name: Verify OpenPGP clear-signed releases
+﻿name: Verify OpenPGP clear-signed releases
 
 on:
   push:
     paths:
-      - 'releases/**/*.asc'
-      - 'scripts/asi-public.asc'
+      - "releases/**/*.asc"
+      - "scripts/asi-public.asc"
+      - "scripts/verify-clearsign.sh"
   workflow_dispatch:
 
 jobs:
@@ -16,9 +17,9 @@ jobs:
       - name: Install GnuPG
         run: sudo apt-get update && sudo apt-get install -y gnupg
 
-      # Optional: pin to the expected fingerprint as an extra guard.
-      # If you don't want to pin, delete the env block.
+      # This script imports scripts/asi-public.asc and DERIVES the fingerprint; no hard-coding.
+      # If you want to pin later, add:
+      #   env:
+      #     EXPECTED_FPR: "<your 40-hex fingerprint>"
       - name: Verify fingerprints and signatures
-        env:
-          EXPECTED_FPR: "2C101FA70F42F93052F82FC755387365B7949796"  # <-- your current key (optional)
         run: bash scripts/verify-clearsign.sh
