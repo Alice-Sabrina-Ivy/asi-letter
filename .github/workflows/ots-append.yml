@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Ensure footer (scriptless, no filename)
+      - name: Ensure footer (scriptless, centered)
         shell: bash
         run: |
           set -euo pipefail
@@ -25,12 +25,12 @@ jobs:
           # Remove any prior OTS blocks or stray legacy script tags
           perl -0777 -pe 's/<!-- OTS-START -->.*?<!-- OTS-END -->\s*//gs; s#<script id="ots-proof".*?</script>\s*##gs' -i "$HTML"
 
-          # Minimal, scriptless footer
-          APPENDIX=$'<!-- OTS-START -->\n<section id="timestamp-proof" style="margin-top:2rem;padding-top:1rem;border-top:1px solid #e5e7eb;font-size:0.95rem;line-height:1.5;">\n  <h3 style="margin:0 0 .5rem 0;font-size:1.05rem;">Timestamp proof (Bitcoin)</h3>\n  <p id="ots-line">Bitcoin anchoring pending. Proof will update automatically.</p>\n</section>\n<!-- OTS-END -->'
+          # Minimal, centered footer (no filename; no details)
+          APPENDIX=$'<!-- OTS-START -->\n<section id="timestamp-proof" style="max-width:48rem;margin:2rem auto 0 auto;padding-top:1rem;border-top:1px solid #e5e7eb;text-align:center;font-size:0.95rem;line-height:1.5;">\n  <h3 style="margin:0 0 .5rem 0;font-size:1.05rem;">Timestamp proof (Bitcoin)</h3>\n  <p id="ots-line">Bitcoin anchoring pending. Proof will update automatically.</p>\n</section>\n<!-- OTS-END -->'
 
           printf "%s\n" "$APPENDIX" >> "$HTML"
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore(ots): footer simplified (no filename, no details) [skip ci]"
+          commit_message: "chore(ots): center minimal footer [skip ci]"
           file_pattern: docs/index.html
