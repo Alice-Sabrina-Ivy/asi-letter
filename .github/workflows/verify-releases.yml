@@ -14,9 +14,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install GnuPG
-        run: sudo apt-get update && sudo apt-get install -y gnupg
+      - name: Install GnuPG + dirmngr
+        run: sudo apt-get update && sudo apt-get install -y gnupg dirmngr
 
-      # This script imports scripts/asi-public.asc and DERIVES the fingerprint; no hard-coding.
       - name: Verify fingerprints and signatures
+        env:
+          EXPECTED_FPR: "2C101FA70F42F93052F82FC755387365B7949796"
         run: bash scripts/verify-clearsign.sh
