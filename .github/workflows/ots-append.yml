@@ -2,8 +2,8 @@
 on:
   push:
     paths:
-      - 'docs/letter.md.asc'
-      - 'docs/index.html'
+      - "docs/letter.md.asc"
+      - "docs/index.html"
   workflow_dispatch: {}
 
 permissions:
@@ -22,7 +22,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          HTML="docs/index.html"\n          perl -0777 -pe 's/<!-- OTS-START -->.*?<!-- OTS-END -->\s*//gs; s#<script id="ots-proof".*?</script>\s*##gs' -i "$HTML"\n          [[ -f "$HTML" ]] || { echo "Missing $HTML" >&2; exit 1; }
+          HTML="docs/index.html"
+          [[ -f "$HTML" ]] || { echo "Missing $HTML" >&2; exit 1; }
+
+          # Sanitize: remove any existing OTS block and stray <script id="ots-proof">
+          perl -0777 -pe 's/<!-- OTS-START -->.*?<!-- OTS-END -->\s*//gs; s#<script id="ots-proof".*?</script>\s*##gs' -i "$HTML"
 
           NEW_B64=""
           if [[ -f docs/letter.md.asc ]]; then
@@ -31,17 +35,13 @@ jobs:
             rm -f docs/letter.md.asc.ots
           fi
 
-          APPENDIX='<!-- OTS-START -->\n<section id="timestamp-proof" style="margin-top:2rem;padding-top:1rem;border-top:1px solid #e5e7eb;font-size:0.95rem;line-height:1.5;">\n  <h3 style="margin:0 0 .5rem 0;font-size:1.05rem;">Timestamp proof (Bitcoin)</h3>\n  <p id="ots-line">Bitcoin anchoring pending for <code>letter.md.asc</code>. Proof will update automatically.</p>\n  <details style="margin-top:.5rem;">\n    <summary>Embedded OpenTimestamps proof (advanced)</summary>\n    <pre id="ots-proof-b64" style="white-space:pre-wrap;word-wrap:anywhere;"></pre>\n    <p style="margin:.5rem 0 0 0;">Save as <code>letter.md.asc.ots</code> and verify with <code>ots verify</code>.</p>\n  </details>\n</section>\n<!-- OTS-END -->'
+          # Scriptless footer (stores proof only in <pre>)
+          APPENDIX=$'<!-- OTS-START -->\n<section id="timestamp-proof" style="margin-top:2rem;padding-top:1rem;border-top:1px solid #e5e7eb;font-size:0.95rem;line-height:1.5;">\n  <h3 style="margin:0 0 .5rem 0;font-size:1.05rem;">Timestamp proof (Bitcoin)</h3>\n  <p id="ots-line">Bitcoin anchoring pending for <code>letter.md.asc</code>. Proof will update automatically.</p>\n  <details style="margin-top:.5rem;">\n    <summary>Embedded OpenTimestamps proof (advanced)</summary>\n    <pre id="ots-proof-b64" style="white-space:pre-wrap;word-wrap:anywhere;"></pre>\n    <p style="margin:.5rem 0 0 0;">Save as <code>letter.md.asc.ots</code> and verify with <code>ots verify</code>.</p>\n  </details>\n</section>\n<!-- OTS-END -->'
 
-          # Insert or replace fenced block
-          if grep -q '<!-- OTS-START -->' "$HTML"; then
-            awk -v repl="$APPENDIX" 'BEGIN{RS="";ORS=""}{print gensub(/<!-- OTS-START -->.*<!-- OTS-END -->/s,repl,1)}' "$HTML" > "$HTML.tmp"
-            mv "$HTML.tmp" "$HTML"
-          else
-            printf "%b\n" "$APPENDIX" >> "$HTML"
-          fi
+          # Append the fresh footer (we sanitized earlier, so no duplicates)
+          printf "%s\n" "$APPENDIX" >> "$HTML"
 
-          # If we created a new proof, embed its base64 into the <pre>
+          # If a new proof exists, embed its base64 into the <pre>
           if [[ -n "$NEW_B64" ]]; then
             awk -v b64="$NEW_B64" 'BEGIN{RS=""; ORS=""}{
               gsub(/(<pre id="ots-proof-b64"[^>]*>)[^<]*/,"\\1" b64,$0);
@@ -52,6 +52,5 @@ jobs:
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore(ots): footer uses <pre> only; remove extra <script> [skip ci]"
+          commit_message: "chore(ots): scriptless footer, sanitize & append [skip ci]"
           file_pattern: docs/index.html
-
