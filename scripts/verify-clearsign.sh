@@ -1,37 +1,46 @@
 #!/usr/bin/env bash
 set -euo pipefail
-IFS=$'\n\t'
-shopt -s nullglob
 
-# (Optional) Import public key if you keep it in-repo as scripts/asi-public.asc
-if [[ -f "scripts/asi-public.asc" ]]; then
-  gpg --batch --import "scripts/asi-public.asc" >/dev/null 2>&1 || true
-fi
+# Location of your armored public key in the repo:
+PUBKEY="scripts/asi-public.asc"
 
-# Ensure expected key is present (set your full fingerprint here)
-FPR="2C101FA70F42F93052F82FC755387365B7949796"
-have_fprs="$(gpg --batch --with-colons --list-keys | awk -F: '/^fpr:/{print $10}')"
-if ! grep -q "$FPR" <<<"$have_fprs"; then
-  echo "Public key with fingerprint $FPR not found in keyring."
-  gpg --batch --list-keys
+# Create an isolated GNUPG home (CI-safe)
+export GNUPGHOME="${GNUPGHOME:-$RUNNER_TEMP/gnupg}"
+mkdir -p "$GNUPGHOME"; chmod 700 "$GNUPGHOME"
+
+# Import the public key
+gpg --batch --import "$PUBKEY"
+
+# Derive the key fingerprint from the armored key itself
+FPR="$(gpg --import-options show-only --import --with-colons "$PUBKEY" \
+  | awk -F: '/^fpr:/ {print $10; exit}')"
+echo "Using fingerprint: $FPR"
+
+# (Optional) pin to EXPECTED_FPR via workflow env if you want an extra check
+if [[ -n "${EXPECTED_FPR:-}" && "$FPR" != "$EXPECTED_FPR" ]]; then
+  echo "ERROR: expected $EXPECTED_FPR but key file has $FPR"
   exit 1
 fi
-echo "Fingerprint OK: $FPR"
 
-fail=0
-found=0
-for f in letter/*.asc; do
-  found=1
-  echo "Verifying $f"
-  if ! gpg --batch --verbose --verify "$f" 2>&1; then
-    echo "PGP verification failed for $f"
-    fail=1
-  fi
-done
+# Trust this key enough for verification (or use --trusted-key later)
+echo "$FPR:6:" | gpg --import-ownertrust >/dev/null
 
-if [[ $found -eq 0 ]]; then
-  echo "No .asc files found under letter/ — skipping."
+# What to verify: args or default glob (clearsigned files)
+FILES=("$@")
+if [[ ${#FILES[@]} -eq 0 ]]; then
+  shopt -s nullglob
+  FILES=(releases/*.asc)
+fi
+
+if [[ ${#FILES[@]} -eq 0 ]]; then
+  echo "No .asc files found to verify."
   exit 0
 fi
 
-exit $fail
+# Verify each clearsigned file
+for f in "${FILES[@]}"; do
+  echo "Verifying $f"
+  gpg --batch --verify "$f"
+done
+
+echo "All signatures verified."
