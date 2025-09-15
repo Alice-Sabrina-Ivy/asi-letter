@@ -1,7 +1,7 @@
 ﻿name: ots-upgrade
 on:
   schedule:
-    - cron: "23 * * * *"   # hourly on default branch
+    - cron: "23 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -22,18 +22,24 @@ jobs:
           /usr/local/go/bin/go install github.com/fiatjaf/ots@latest
           echo "$HOME/go/bin" >> $GITHUB_PATH
 
-      - name: Compute current status and update footer line
+      - name: Update footer status line from newest /letter/*.asc (fallback: docs/letter.md.asc)
         shell: bash
         run: |
           set -euo pipefail
           HTML="docs/index.html"
           [[ -f "$HTML" ]] || { echo "Missing $HTML" >&2; exit 1; }
 
+          TARGET=""
+          if ls letter/*.asc 1>/dev/null 2>&1; then
+            TARGET="$(ls -t letter/*.asc | head -n1)"
+          elif [[ -f docs/letter.md.asc ]]; then
+            TARGET="docs/letter.md.asc"
+          fi
+
           HEIGHT=""
-          if [[ -f docs/letter.md.asc ]]; then
-            # Create a transient proof, upgrade it, and read block height
-            ots stamp docs/letter.md.asc
-            mv docs/letter.md.asc.ots /tmp/proof.ots
+          if [[ -n "$TARGET" ]]; then
+            ots stamp "$TARGET"
+            mv "${TARGET}.ots" /tmp/proof.ots
             ots upgrade /tmp/proof.ots || true
 
             set +e
@@ -60,5 +66,5 @@ jobs:
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore(ots): update footer status line (pending → block height) [skip ci]"
+          commit_message: "chore(ots): center footer + update status from newest /letter/*.asc [skip ci]"
           file_pattern: docs/index.html
