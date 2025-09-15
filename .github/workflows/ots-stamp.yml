@@ -2,12 +2,16 @@
 on:
   push:
     paths:
-      - "docs/index.html"
-      - "docs/**/*.html"
       - "index.html"
+      - "docs/index.html"
       - "asi-letter-*.md"
-      - "letters/**.md"
+      - "letters/**/*.md"
   workflow_dispatch:
+    inputs:
+      files:
+        description: "Space-separated list of files to stamp"
+        required: false
+        default: "docs/index.html"
 
 permissions:
   contents: write
@@ -17,46 +21,59 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - run: pip install --upgrade opentimestamps-client
-      - run: chmod +x scripts/ots-stamp-and-inject.sh
 
-      - name: Find changed letter files
+      - name: Install OpenTimestamps client
+        run: pip install --upgrade opentimestamps-client
+
+      - name: Ensure helper script is executable
+        run: chmod +x scripts/ots-stamp-and-inject.sh
+
+      - name: Decide which files to stamp
         id: files
         shell: bash
         run: |
           set -e
+          LIST="${{ github.event.inputs.files }}"
+          if [ -n "$LIST" ]; then
+            echo "changed=$LIST" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           BEFORE="${{ github.event.before }}"
           if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
             BEFORE=$(git rev-parse HEAD^ 2>/dev/null || echo "")
           fi
           CHANGED=$(git diff --name-only "$BEFORE" ${{ github.sha }} -- \
-            "docs/index.html" "docs/**/*.html" \
-            "index.html" "asi-letter-*.md" "letters/**/*.md" || true)
+            "index.html" "docs/index.html" "asi-letter-*.md" "letters/**/*.md" || true)
           echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
           printf "Changed files:\n%s\n" "$CHANGED"
 
-      - name: Stamp each changed file
+      - name: Stamp each file
         if: steps.files.outputs.changed != ''
         shell: bash
         run: |
           set -e
           for f in ${{ steps.files.outputs.changed }}; do
-            echo "Stamping $f"
-            ./scripts/ots-stamp-and-inject.sh "$f"
+            if [ -f "$f" ]; then
+              echo "Stamping $f"
+              ./scripts/ots-stamp-and-inject.sh "$f"
+            else
+              echo "Skipping missing $f"
+            fi
           done
 
-      - name: Commit proofs & optional injection changes
+      - name: Commit proofs & injection changes
         if: steps.files.outputs.changed != ''
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore(ots): add/update proofs and appendix [skip ci]"
           file_pattern: |
             proofs/**
-            docs/**/*.html
-            docs/index.html
             index.html
+            docs/index.html
             asi-letter-*.md
-            letters/**.md
+            letters/**/*.md
