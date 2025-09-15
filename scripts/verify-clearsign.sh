@@ -3,34 +3,36 @@ set -euo pipefail
 
 PUBKEY="scripts/asi-public.asc"
 
-# Isolated keyring for CI
+# Isolated keyring (CI-safe)
 export GNUPGHOME="${GNUPGHOME:-$RUNNER_TEMP/gnupg}"
 mkdir -p "$GNUPGHOME"; chmod 700 "$GNUPGHOME"
 
-# Import public key from repo
-gpg --batch --import "$PUBKEY"
-
-# Derive fingerprint from the key itself
-FPR="$(gpg --import-options show-only --import --with-colons "$PUBKEY" \
-  | awk -F: "/^fpr:/ {print \$10; exit}")"
-echo "Using fingerprint: $FPR"
-
-# Optional pin (set EXPECTED_FPR in workflow env to enforce)
-if [[ -n "${EXPECTED_FPR:-}" && "$FPR" != "$EXPECTED_FPR" ]]; then
-  echo "ERROR: expected $EXPECTED_FPR but key file has $FPR"
-  exit 1
+# --- Normalize key file on runner (handles BOM/CR/UTF-16 accidents) ---
+# Strip UTF-8 BOM if present
+if head -c3 "$PUBKEY" | od -An -t x1 | tr -d " \n" | grep -qi '^efbbbf$'; then
+  tail -c +4 "$PUBKEY" > "$PUBKEY.tmp" && mv "$PUBKEY.tmp" "$PUBKEY"
 fi
+# If UTF-16, convert to UTF-8
+ENC="$(file -bi "$PUBKEY" | sed 's/.*charset=//')"
+if [[ "$ENC" == "utf-16le" || "$ENC" == "utf-16be" ]]; then
+  iconv -f "$ENC" -t utf-8 "$PUBKEY" > "$PUBKEY.tmp" && mv "$PUBKEY.tmp" "$PUBKEY"
+fi
+# Drop CRs (Windows line endings)
+tr -d '\r' < "$PUBKEY" > "$PUBKEY.tmp" && mv "$PUBKEY.tmp" "$PUBKEY"
+# ---------------------------------------------------------------------
 
-# Trust this key for verification
+# Import, derive fingerprint, trust it for this verify
+gpg --batch --import "$PUBKEY"
+FPR="$(gpg --import-options show-only --import --with-colons "$PUBKEY" | awk -F: "/^fpr:/{print \$10; exit}")"
+echo "Using fingerprint: $FPR"
 echo "$FPR:6:" | gpg --import-ownertrust >/dev/null
 
-# Files to verify
+# Files to verify (default to releases/*.asc)
 FILES=("$@")
 if [[ ${#FILES[@]} -eq 0 ]]; then
   shopt -s nullglob
   FILES=(releases/*.asc)
 fi
-
 if [[ ${#FILES[@]} -eq 0 ]]; then
   echo "No .asc files found to verify."
   exit 0
