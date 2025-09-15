@@ -1,13 +1,7 @@
 ﻿name: ots-upgrade
 on:
   schedule:
-    - cron: '23 * * * *'   # hourly (default branch only)
-  push:
-    branches: [ test ]      # temp push trigger for testing
-    paths:
-      - 'letter/*.asc.ots'
-      - 'docs/index.html'
-      - '.github/workflows/ots-upgrade.yml'
+    - cron: '23 * * * *'   # hourly on default branch
   workflow_dispatch: {}
 
 permissions:
@@ -29,31 +23,18 @@ jobs:
           /usr/local/go/bin/go install github.com/fiatjaf/ots@latest
           echo "$HOME/go/bin" >> $GITHUB_PATH
 
-      - name: Upgrade proofs in /letter (if any)
-        shell: bash
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          changed=0
-          for p in letter/*.asc.ots; do
-            cp "$p" "$p.bak" || true
-            ots upgrade "$p" || true
-            if ! cmp -s "$p" "$p.bak"; then
-              echo "Upgraded $p"
-              changed=1
-            fi
-            rm -f "$p.bak"
-          done
-          echo "changed_letter=$changed" >> "$GITHUB_OUTPUT"
-
-      - name: Extract embedded proof from docs/index.html
+      - name: Extract embedded proof from docs/index.html (<pre> fallback)
         id: extract
         shell: bash
         run: |
           set -euo pipefail
           HTML="docs/index.html"
           if [[ -f "$HTML" ]]; then
+            # Try <script> first (legacy), then <pre>
             B64="$(awk 'BEGIN{RS="";ORS=""} {if (match($0,/<script id="ots-proof"[^>]*>([^<]*)<\/script>/,m)) print m[1];}' "$HTML")"
+            if [[ -z "$B64" ]]; then
+              B64="$(awk 'BEGIN{RS="";ORS=""} {if (match($0,/<pre id="ots-proof-b64"[^>]*>([^<]*)<\/pre>/,m)) print m[1];}' "$HTML")"
+            fi
             echo "b64_present=$([[ -n "$B64" ]] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
             if [[ -n "$B64" ]]; then
               echo -n "$B64" | base64 -d > /tmp/proof.ots || true
@@ -81,13 +62,16 @@ jobs:
           awk -v b64="$NEW_B64" -v height="$HEIGHT" '
             BEGIN{RS=""; ORS=""}
             {
-              gsub(/(<script id="ots-proof"[^>]*>)[^<]*/,"\\1" b64,$0);
-              gsub(/(<pre id="ots-proof-b64"[^>]*>)[^<]*/,"\\1" b64,$0);
+              # Update the <pre> content
+              if ($0 ~ /<pre id="ots-proof-b64"/) {
+                gsub(/(<pre id="ots-proof-b64"[^>]*>)[^<]*/,"\\1" b64,$0);
+              }
+              # Refresh the status line
               if (length(height) > 0) {
                 gsub(/<p id="ots-line">.*<\/p>/,
                      "<p id=\"ots-line\">Bitcoin block <strong>" height "</strong> attests <code>letter.md.asc</code> existed prior to that block.</p>", $0);
               } else {
-                gsub(/<p id="ots-line">.*<\/p>/,
+                gsub(/<p id=\"ots-line\">.*<\/p>/,
                      "<p id=\"ots-line\">Bitcoin anchoring pending for <code>letter.md.asc</code>. Proof will update automatically.</p>", $0);
               }
               print
@@ -96,8 +80,5 @@ jobs:
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore(ots): upgrade proofs (/letter & embedded) [skip ci]"
-          file_pattern: |
-            letter/*.asc.ots
-            docs/index.html
-
+          commit_message: "chore(ots): upgrade embedded <pre> proof + status line [skip ci]"
+          file_pattern: docs/index.html
