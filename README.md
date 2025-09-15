@@ -81,10 +81,6 @@ gpg --verify letter.html.asc letter.html
 
 ---
 
-## Verify on GitHub (optional)
-- **Commits with “Verified” badges:** https://github.com/Alice-Sabrina-Ivy/asi-letter/commits/main  
-- **Public keys folder:** https://github.com/Alice-Sabrina-Ivy/asi-letter/tree/main/keys
-
 
 ## Verify Bitcoin timestamp (OpenTimestamps)
 
