@@ -2,8 +2,9 @@
 on:
   push:
     paths:
-      - "index.html"
       - "docs/index.html"
+      - "docs/**/*.html"
+      - "index.html"
       - "asi-letter-*.md"
       - "letters/**/*.md"
   workflow_dispatch:
@@ -21,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # <-- ensure the BEFORE commit exists
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -37,18 +40,34 @@ jobs:
         id: files
         shell: bash
         run: |
-          set -e
-          LIST="${{ github.event.inputs.files }}"
-          if [ -n "$LIST" ]; then
-            echo "changed=$LIST" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+
+          # 1) Manual input wins (workflow_dispatch)
+          if [[ -n "${{ github.event.inputs.files || '' }}" ]]; then
+            echo "changed=${{ github.event.inputs.files }}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
+          # 2) Candidate globs (keep in one place)
+          CANDS=( "docs/index.html" "docs/**/*.html" "index.html" "asi-letter-*.md" "letters/**/*.md" )
+
+          # 3) Try to diff against event.before if the object exists
           BEFORE="${{ github.event.before }}"
-          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            BEFORE=$(git rev-parse HEAD^ 2>/dev/null || echo "")
+          CHANGED=""
+          if [[ -n "$BEFORE" ]] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            CHANGED=$(git diff --name-only "$BEFORE" "${{ github.sha }}" -- "${CANDS[@]}" || true)
+          else
+            # 4) Fallback: diff HEAD^..HEAD if possible
+            if git rev-parse HEAD^ >/dev/null 2>&1; then
+              CHANGED=$(git diff --name-only HEAD^ HEAD -- "${CANDS[@]}" || true)
+            fi
           fi
-          CHANGED=$(git diff --name-only "$BEFORE" ${{ github.sha }} -- \
-            "index.html" "docs/index.html" "asi-letter-*.md" "letters/**/*.md" || true)
+
+          # 5) Last resort: stamp docs/index.html so the job always produces output
+          if [[ -z "$CHANGED" ]]; then
+            CHANGED="docs/index.html"
+          fi
+
           echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
           printf "Changed files:\n%s\n" "$CHANGED"
 
@@ -56,17 +75,17 @@ jobs:
         if: steps.files.outputs.changed != ''
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
           for f in ${{ steps.files.outputs.changed }}; do
-            if [ -f "$f" ]; then
+            if [[ -f "$f" ]]; then
               echo "Stamping $f"
               ./scripts/ots-stamp-and-inject.sh "$f"
             else
-              echo "Skipping missing $f"
+              echo "WARN: $f not found; skipping"
             fi
           done
 
-      - name: Commit proofs & injection changes
+      - name: Commit proofs & optional injection changes
         if: steps.files.outputs.changed != ''
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
