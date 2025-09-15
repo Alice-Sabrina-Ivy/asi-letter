@@ -23,51 +23,32 @@ jobs:
         run: |
           set -euo pipefail
           HTML="docs/index.html"
-          if [[ ! -f "$HTML" ]]; then
-            echo "Missing $HTML" >&2; exit 1
-          fi
+          [[ -f "$HTML" ]] || { echo "Missing $HTML" >&2; exit 1; }
 
           NEW_B64=""
           if [[ -f docs/letter.md.asc ]]; then
             ots stamp docs/letter.md.asc
-            base64 -w0 docs/letter.md.asc.ots > /tmp/proof.b64
+            NEW_B64="$(base64 -w0 docs/letter.md.asc.ots)"
             rm -f docs/letter.md.asc.ots
-            NEW_B64="$(cat /tmp/proof.b64)"
           fi
 
-          APPENDIX="$(cat <<'EOF'
-<!-- OTS-START -->
-<section id="timestamp-proof" style="margin-top:2rem;padding-top:1rem;border-top:1px solid #e5e7eb;font-size:0.95rem;line-height:1.5;">
-  <h3 style="margin:0 0 .5rem 0;font-size:1.05rem;">Timestamp proof (Bitcoin)</h3>
-  <p id="ots-line">Bitcoin anchoring pending for <code>letter.md.asc</code>. Proof will update automatically.</p>
-  <details style="margin-top:.5rem;">
-    <summary>Embedded OpenTimestamps proof (advanced)</summary>
-    <pre id="ots-proof-b64" style="white-space:pre-wrap;word-wrap:anywhere;"></pre>
-    <p style="margin:.5rem 0 0 0;">Save as <code>letter.md.asc.ots</code> and verify with <code>ots verify</code>.</p>
-  </details>
-</section>
-<script id="ots-proof" type="application/octet-stream"></script>
-<!-- OTS-END -->
-EOF
-)"
+          APPENDIX='<!-- OTS-START -->\n<section id="timestamp-proof" style="margin-top:2rem;padding-top:1rem;border-top:1px solid #e5e7eb;font-size:0.95rem;line-height:1.5;">\n  <h3 style="margin:0 0 .5rem 0;font-size:1.05rem;">Timestamp proof (Bitcoin)</h3>\n  <p id="ots-line">Bitcoin anchoring pending for <code>letter.md.asc</code>. Proof will update automatically.</p>\n  <details style="margin-top:.5rem;">\n    <summary>Embedded OpenTimestamps proof (advanced)</summary>\n    <pre id="ots-proof-b64" style="white-space:pre-wrap;word-wrap:anywhere;"></pre>\n    <p style="margin:.5rem 0 0 0;">Save as <code>letter.md.asc.ots</code> and verify with <code>ots verify</code>.</p>\n  </details>\n</section>\n<script id="ots-proof" type="application/octet-stream"></script>\n<!-- OTS-END -->'
 
-          # Insert or replace the fenced block
+          # Insert or replace fenced block
           if grep -q '<!-- OTS-START -->' "$HTML"; then
             awk -v repl="$APPENDIX" 'BEGIN{RS="";ORS=""}{print gensub(/<!-- OTS-START -->.*<!-- OTS-END -->/s,repl,1)}' "$HTML" > "$HTML.tmp"
             mv "$HTML.tmp" "$HTML"
           else
-            printf "\n%s\n" "$APPENDIX" >> "$HTML"
+            printf "%b\n" "$APPENDIX" >> "$HTML"
           fi
 
-          # If we created a new proof, embed its base64 both in <script> and <pre>
-          if [[ -n "${NEW_B64:-}" ]]; then
-            awk -v b64="$NEW_B64" '
-              BEGIN{RS=""; ORS=""}
-              {
-                gsub(/(<script id="ots-proof"[^>]*>)[^<]*/,"\\1" b64,$0);
-                gsub(/(<pre id="ots-proof-b64"[^>]*>)[^<]*/,"\\1" b64,$0);
-                print
-              }' "$HTML" > "$HTML.tmp"
+          # If we created a new proof, embed its base64 into <script> and <pre>
+          if [[ -n "$NEW_B64" ]]; then
+            awk -v b64="$NEW_B64" 'BEGIN{RS=""; ORS=""}{
+              gsub(/(<script id="ots-proof"[^>]*>)[^<]*/,"\\1" b64,$0);
+              gsub(/(<pre id="ots-proof-b64"[^>]*>)[^<]*/,"\\1" b64,$0);
+              print
+            }' "$HTML" > "$HTML.tmp"
             mv "$HTML.tmp" "$HTML"
           fi
 
