@@ -1,7 +1,13 @@
 ﻿name: ots-upgrade
 on:
   schedule:
-    - cron: '23 * * * *'   # hourly (only runs on default branch)
+    - cron: '23 * * * *'   # hourly (default branch only)
+  push:
+    branches: [ test ]      # temp push trigger for testing
+    paths:
+      - 'letter/*.asc.ots'
+      - 'docs/index.html'
+      - '.github/workflows/ots-upgrade.yml'
   workflow_dispatch: {}
 
 permissions:
