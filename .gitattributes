@@ -1,1 +1,3 @@
 ﻿*.sh text eol=lf
+scripts/asi-public.asc text eol=lf
+scripts/asi-public.asc merge=ours
