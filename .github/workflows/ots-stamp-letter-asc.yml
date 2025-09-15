@@ -1,0 +1,42 @@
+﻿name: ots-stamp-letter-asc
+on:
+  push:
+    paths:
+      - 'letter/*.asc'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  stamp-letter-asc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenTimestamps client
+        run: python -m pip install --upgrade opentimestamps-client
+
+      - name: Stamp any new .asc in /letter (idempotent)
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          touched=0
+          for asc in letter/*.asc; do
+            otsfile="${asc}.ots"
+            if [[ ! -f "$otsfile" ]]; then
+              echo "Stamping $asc -> $otsfile"
+              # creates "$asc.ots" in-place (no move needed)
+              ots stamp "$asc"
+              touched=1
+            else
+              echo "Exists: $otsfile (skipping)"
+            fi
+          done
+          echo "touched=$touched" >> "$GITHUB_OUTPUT"
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(ots): add proofs for new /letter/*.asc [skip ci]"
+          file_pattern: letter/*.asc.ots

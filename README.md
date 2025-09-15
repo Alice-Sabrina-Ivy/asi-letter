@@ -85,3 +85,21 @@ gpg --verify letter.html.asc letter.html
 - **Commits with “Verified” badges:** https://github.com/Alice-Sabrina-Ivy/asi-letter/commits/main  
 - **Public keys folder:** https://github.com/Alice-Sabrina-Ivy/asi-letter/tree/main/keys
 
+
+## Verify Bitcoin timestamp (OpenTimestamps)
+
+**From the site footer:** copy the base64 proof → save as letter.md.asc.ots → verify:
+
+```
+python -m pip install --upgrade opentimestamps-client
+ots verify letter.md.asc.ots
+```
+
+**From the repo history:** each /letter/*.asc has a sibling /letter/*.asc.ots. Download and:
+
+```
+ots verify letter/<name>.asc.ots
+```
+
+You’ll see either a pending status or a confirmed **Bitcoin block** height. Independent verification is strongest against your own Bitcoin node.
+

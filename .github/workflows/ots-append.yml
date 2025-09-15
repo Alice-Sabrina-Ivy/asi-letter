@@ -1,0 +1,58 @@
+﻿name: ots-append
+on:
+  push:
+    paths:
+      - 'docs/letter.md.asc'
+      - 'docs/index.html'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  append-proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenTimestamps client
+        run: python -m pip install --upgrade opentimestamps-client
+
+      - name: Ensure footer + embedded proof in docs/index.html
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTML="docs/index.html"
+          [[ -f "$HTML" ]] || { echo "Missing $HTML" >&2; exit 1; }
+
+          NEW_B64=""
+          if [[ -f docs/letter.md.asc ]]; then
+            ots stamp docs/letter.md.asc
+            NEW_B64="$(base64 -w0 docs/letter.md.asc.ots)"
+            rm -f docs/letter.md.asc.ots
+          fi
+
+          APPENDIX='<!-- OTS-START -->\n<section id="timestamp-proof" style="margin-top:2rem;padding-top:1rem;border-top:1px solid #e5e7eb;font-size:0.95rem;line-height:1.5;">\n  <h3 style="margin:0 0 .5rem 0;font-size:1.05rem;">Timestamp proof (Bitcoin)</h3>\n  <p id="ots-line">Bitcoin anchoring pending for <code>letter.md.asc</code>. Proof will update automatically.</p>\n  <details style="margin-top:.5rem;">\n    <summary>Embedded OpenTimestamps proof (advanced)</summary>\n    <pre id="ots-proof-b64" style="white-space:pre-wrap;word-wrap:anywhere;"></pre>\n    <p style="margin:.5rem 0 0 0;">Save as <code>letter.md.asc.ots</code> and verify with <code>ots verify</code>.</p>\n  </details>\n</section>\n<script id="ots-proof" type="application/octet-stream"></script>\n<!-- OTS-END -->'
+
+          # Insert or replace fenced block
+          if grep -q '<!-- OTS-START -->' "$HTML"; then
+            awk -v repl="$APPENDIX" 'BEGIN{RS="";ORS=""}{print gensub(/<!-- OTS-START -->.*<!-- OTS-END -->/s,repl,1)}' "$HTML" > "$HTML.tmp"
+            mv "$HTML.tmp" "$HTML"
+          else
+            printf "%b\n" "$APPENDIX" >> "$HTML"
+          fi
+
+          # If we created a new proof, embed its base64 into <script> and <pre>
+          if [[ -n "$NEW_B64" ]]; then
+            awk -v b64="$NEW_B64" 'BEGIN{RS=""; ORS=""}{
+              gsub(/(<script id="ots-proof"[^>]*>)[^<]*/,"\\1" b64,$0);
+              gsub(/(<pre id="ots-proof-b64"[^>]*>)[^<]*/,"\\1" b64,$0);
+              print
+            }' "$HTML" > "$HTML.tmp"
+            mv "$HTML.tmp" "$HTML"
+          fi
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(ots): append timestamp footer to index.html [skip ci]"
+          file_pattern: docs/index.html
