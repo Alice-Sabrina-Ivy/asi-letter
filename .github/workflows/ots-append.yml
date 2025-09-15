@@ -22,8 +22,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          HTML="docs/index.html"
-          [[ -f "$HTML" ]] || { echo "Missing $HTML" >&2; exit 1; }
+          HTML="docs/index.html"\n          perl -0777 -pe 's/<!-- OTS-START -->.*?<!-- OTS-END -->\s*//gs; s#<script id="ots-proof".*?</script>\s*##gs' -i "$HTML"\n          [[ -f "$HTML" ]] || { echo "Missing $HTML" >&2; exit 1; }
 
           NEW_B64=""
           if [[ -f docs/letter.md.asc ]]; then
@@ -55,3 +54,4 @@ jobs:
         with:
           commit_message: "chore(ots): footer uses <pre> only; remove extra <script> [skip ci]"
           file_pattern: docs/index.html
+
