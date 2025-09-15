@@ -1,53 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
+IFS=$'\n\t'
+shopt -s nullglob
 
-: "${EXPECTED_FPR:?Set EXPECTED_FPR in workflow env}"
-: "${RAW_KEY_URL:?Set RAW_KEY_URL in workflow env}"
-
-# CI-safe keyring
-export GNUPGHOME="${GNUPGHOME:-$RUNNER_TEMP/gnupg}"
-mkdir -p "$GNUPGHOME"; chmod 700 "$GNUPGHOME"
-
-echo "Downloading public key from: $RAW_KEY_URL"
-TMP="$RUNNER_TEMP/key.asc"
-curl -fsSL "$RAW_KEY_URL" -o "$TMP"
-
-# Normalize the key: strip BOM/CR, convert UTF-16→UTF-8 if needed
-python3 - <<PY
-import codecs, sys, os
-p = os.environ["TMP"]
-b = open(p,"rb").read()
-if b.startswith(codecs.BOM_UTF8): b = b[len(codecs.BOM_UTF8):]
-def looks_utf16(x): 
-    return x.startswith(codecs.BOM_UTF16_LE) or x.startswith(codecs.BOM_UTF16_BE) or (b"\x00" in x[:64])
-try:
-    if looks_utf16(b): b = b.decode("utf-16").encode("utf-8")
-except Exception: pass
-b = b.replace(b"\r", b"")
-open(p,"wb").write(b)
-PY
-
-# Import and verify fingerprint
-gpg --batch --import "$TMP"
-DERIVED="$(gpg --list-keys --with-colons | awk -F: "/^fpr:/{print \$10; exit}")"
-echo "Derived fingerprint: $DERIVED"
-if [[ "$DERIVED" != "$EXPECTED_FPR" ]]; then
-  echo "ERROR: Fingerprint mismatch. Expected $EXPECTED_FPR, got $DERIVED" >&2
-  exit 3
+# (Optional) Import public key if you keep it in-repo as scripts/asi-public.asc
+if [[ -f "scripts/asi-public.asc" ]]; then
+  gpg --batch --import "scripts/asi-public.asc" >/dev/null 2>&1 || true
 fi
 
-echo "$DERIVED:6:" | gpg --import-ownertrust >/dev/null
+# Ensure expected key is present (set your full fingerprint here)
+FPR="2C101FA70F42F93052F82FC755387365B7949796"
+have_fprs="$(gpg --batch --with-colons --list-keys | awk -F: '/^fpr:/{print $10}')"
+if ! grep -q "$FPR" <<<"$have_fprs"; then
+  echo "Public key with fingerprint $FPR not found in keyring."
+  gpg --batch --list-keys
+  exit 1
+fi
+echo "Fingerprint OK: $FPR"
 
-shopt -s nullglob
-FILES=(releases/*.asc)
-if [[ ${#FILES[@]} -eq 0 ]]; then
-  echo "No .asc files found to verify."
+fail=0
+found=0
+for f in letter/*.asc; do
+  found=1
+  echo "Verifying $f"
+  if ! gpg --batch --verbose --verify "$f" 2>&1; then
+    echo "PGP verification failed for $f"
+    fail=1
+  fi
+done
+
+if [[ $found -eq 0 ]]; then
+  echo "No .asc files found under letter/ — skipping."
   exit 0
 fi
 
-for f in "${FILES[@]}"; do
-  echo "Verifying $f"
-  gpg --batch --verify "$f"
-done
-
-echo "All signatures verified."
+exit $fail
