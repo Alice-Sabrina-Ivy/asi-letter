@@ -14,12 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install GnuPG + tools`n        run: sudo apt-get update && sudo apt-get install -y gnupg file
+      - name: Install GnuPG
+        run: sudo apt-get update && sudo apt-get install -y gnupg
 
       # This script imports scripts/asi-public.asc and DERIVES the fingerprint; no hard-coding.
-      # If you want to pin later, add:
-      #   env:
-      #     EXPECTED_FPR: "<your 40-hex fingerprint>"
       - name: Verify fingerprints and signatures
         run: bash scripts/verify-clearsign.sh
-
