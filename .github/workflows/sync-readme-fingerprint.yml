@@ -1,4 +1,4 @@
-﻿name: sync-readme-fingerprint
+name: sync-readme-fingerprint
 on:
   push:
     paths:
