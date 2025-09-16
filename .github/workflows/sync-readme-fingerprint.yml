@@ -1,0 +1,33 @@
+﻿name: sync-readme-fingerprint
+on:
+  push:
+    paths:
+      - "keys/FINGERPRINT"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update README fingerprint line
+        shell: bash
+        run: |
+          RAW=$(tr -d " \r\n" < keys/FINGERPRINT | tr "[:lower:]" "[:upper:]")
+          SPACED=$(echo "$RAW" | sed -E "s/.{4}/& /g;s/ $//")
+          DOUBLE=$(echo "$SPACED" | sed -E "s/^(([^ ]+ ){5})/\1 /")
+          sed -E -i "s|(\*\*Fingerprint to trust:\*\*) \`[A-F0-9 ]+\`|\1 \`$DOUBLE\`|g" README.md
+          if git diff --quiet -- README.md; then
+            echo "README already up to date."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add README.md
+            git commit -m "docs(readme): sync fingerprint from keys/FINGERPRINT [skip ci]"
+          fi
+      - uses: ad-m/github-push-action@v0.8.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
