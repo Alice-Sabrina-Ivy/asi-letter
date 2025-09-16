@@ -22,7 +22,7 @@ jobs:
           /usr/local/go/bin/go install github.com/fiatjaf/ots@latest
           echo "$HOME/go/bin" >> $GITHUB_PATH
 
-      - name: Update footer status line from newest /letter/*.asc (fallback: docs/letter.md.asc)
+      - name: "Update footer status line from newest /letter/*.asc (fallback: docs/letter.md.asc)"
         shell: bash
         run: |
           set -euo pipefail
