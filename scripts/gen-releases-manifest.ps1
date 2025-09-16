@@ -38,6 +38,49 @@ function FileInfoJson($path) {
   } else { $null }
 }
 
+function Get-OtsMetadata([string]$otsBinaryPath) {
+  if (Test-Path $otsBinaryPath) {
+    $info = FileInfoJson $otsBinaryPath
+    if ($info) { $info | Add-Member -NotePropertyName encoding -NotePropertyValue "binary" }
+    return $info
+  }
+
+  $base64Path = "$otsBinaryPath.base64"
+  if (Test-Path $base64Path) {
+    $encoded = FileInfoJson $base64Path
+    $raw = (Get-Content -Raw -Path $base64Path)
+    $rawStripped = ($raw -replace '\s','')
+    try {
+      $bytes = [System.Convert]::FromBase64String($rawStripped)
+    } catch {
+      throw "Invalid base64 data in $($encoded.path): $_"
+    }
+
+    $tmp = [System.IO.Path]::GetTempFileName()
+    try {
+      [System.IO.File]::WriteAllBytes($tmp, $bytes)
+      $binaryHash = (Get-FileHash $tmp -Algorithm SHA256).Hash.ToLower()
+    } finally {
+      Remove-Item $tmp -ErrorAction SilentlyContinue
+    }
+
+    return [pscustomobject]@{
+      path          = $encoded.path
+      decoded_path  = (To-Rel $otsBinaryPath)
+      encoding      = "base64"
+      size          = [int64]$bytes.Length
+      sha256        = $binaryHash
+      encoded       = [pscustomobject]@{
+        path   = $encoded.path
+        size   = $encoded.size
+        sha256 = $encoded.sha256
+      }
+    }
+  }
+
+  return $null
+}
+
 function Ensure-GpgKeys {
   $keyFiles = Get-ChildItem -Path "keys" -Filter "*.asc" -ErrorAction SilentlyContinue
   if ($keyFiles) { foreach ($k in $keyFiles) { & gpg --batch --import $k.FullName | Out-Null } }
@@ -81,7 +124,7 @@ Get-ChildItem -Path "letter" -Filter "ASI-Letter-v*.md" | ForEach-Object {
     files   = [pscustomobject]@{
       md  = FileInfoJson $md.FullName
       asc = FileInfoJson $asc
-      ots = FileInfoJson $ots
+      ots = Get-OtsMetadata $ots
     }
   }
 }
@@ -90,7 +133,7 @@ Get-ChildItem -Path "letter" -Filter "ASI-Letter-v*.md" | ForEach-Object {
 $releasesSorted = ,($releases | Sort-Object -Property version -Descending)
 
 $manifest = [pscustomobject]@{
-  schema  = "asi-letter/releases#1"
+  schema  = "asi-letter/releases#2"
   updated = (Get-Date).ToUniversalTime().ToString("s") + "Z"
 key     = [pscustomobject]@{
     fingerprint_current = $currentFp

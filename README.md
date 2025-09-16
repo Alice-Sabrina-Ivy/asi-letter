@@ -84,17 +84,27 @@ gpg --verify letter.html.asc letter.html
 
 ## Verify Bitcoin timestamp (OpenTimestamps)
 
-**From the site footer:** copy the base64 proof → save as letter.md.asc.ots → verify:
+OpenTimestamps proofs are stored as base64 text files (`*.asc.ots.base64`) so pull requests stay text‑only. Decode before running `ots verify`.
+
+**From the site footer:** copy the base64 proof → save as `letter.md.asc.ots.base64` → decode → verify:
 
 ```
 python -m pip install --upgrade opentimestamps-client
+base64 -d letter.md.asc.ots.base64 > letter.md.asc.ots
 ots verify letter.md.asc.ots
 ```
 
-**From the repo history:** each /letter/*.asc has a sibling /letter/*.asc.ots. Download and:
+**From the repo history:** run the helper script to materialize the binary proofs (ignored by git):
 
 ```
+bash scripts/export-ots-proofs.sh
 ots verify letter/<name>.asc.ots
+```
+
+Alternatively decode a single proof without writing to disk:
+
+```
+base64 -d letter/<name>.asc.ots.base64 | ots verify -
 ```
 
 You’ll see either a pending status or a confirmed **Bitcoin block** height. Independent verification is strongest against your own Bitcoin node.
