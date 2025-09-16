@@ -50,7 +50,33 @@ jobs:
             cp "${TARGET}.ots" /tmp/proof.ots
             ots upgrade /tmp/proof.ots || true
 
-            if PY_OUT="$(python -c $'import sys\nfrom pathlib import Path\ntry:\n    from opentimestamps.core.serialize import StreamDeserializationContext\n    from opentimestamps.core.timestamp import DetachedTimestampFile\n    from opentimestamps.core.notary import BitcoinBlockHeaderAttestation\nexcept Exception:\n    sys.exit(0)\n\npath = Path(sys.argv[1])\nif not path.is_file():\n    sys.exit(0)\n\ntry:\n    with path.open("rb") as fh:\n        ctx = StreamDeserializationContext(fh)\n        timestamp = DetachedTimestampFile.deserialize(ctx).timestamp\nexcept Exception:\n    sys.exit(0)\n\nheights = sorted({\n    att.height\n    for _, att in timestamp.all_attestations()\n    if isinstance(att, BitcoinBlockHeaderAttestation)\n})\nif heights:\n    print(heights[-1])\n' /tmp/proof.ots)"; then
+            if PY_OUT="$(python - /tmp/proof.ots <<'PY'
+import sys
+from pathlib import Path
+try:
+    from opentimestamps.core.serialize import StreamDeserializationContext
+    from opentimestamps.core.timestamp import DetachedTimestampFile
+    from opentimestamps.core.notary import BitcoinBlockHeaderAttestation
+except Exception:
+    sys.exit(0)
+
+path = Path(sys.argv[1])
+if not path.is_file():
+    sys.exit(0)
+
+try:
+    with path.open('rb') as fh:
+        ctx = StreamDeserializationContext(fh)
+        timestamp = DetachedTimestampFile.deserialize(ctx).timestamp
+except Exception:
+    sys.exit(0)
+
+heights = sorted({att.height for _, att in timestamp.all_attestations()
+                  if isinstance(att, BitcoinBlockHeaderAttestation)})
+if heights:
+    print(heights[-1])
+PY
+)"; then
               HEIGHT="${PY_OUT//$'\n'/}"
               HEIGHT="${HEIGHT//$'\r'/}"
             fi
