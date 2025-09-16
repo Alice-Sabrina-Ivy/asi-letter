@@ -1,4 +1,4 @@
-﻿name: ots-append
+name: ots-append
 on:
   push:
     paths:

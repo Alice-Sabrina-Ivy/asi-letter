@@ -1,4 +1,4 @@
-﻿name: Verify OpenPGP clear-signed releases
+name: Verify OpenPGP clear-signed releases
 on: [push, pull_request]
 jobs:
   verify:

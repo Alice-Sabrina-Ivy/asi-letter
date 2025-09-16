@@ -1,4 +1,4 @@
-﻿name: ots-stamp-letter-asc
+name: ots-stamp-letter-asc
 on:
   push:
     paths:

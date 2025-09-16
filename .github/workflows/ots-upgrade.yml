@@ -38,16 +38,16 @@ jobs:
 
           HEIGHT=""
           if [[ -n "$TARGET" ]]; then
-  echo "Using TARGET='$TARGET'"# Only stamp if proof file doesn't exist
+            echo "Using TARGET='$TARGET'"
             if [ ! -f "${TARGET}.ots" ]; then
-              echo "No .ots present — stamping…"
+              echo "No .ots present; stamping"
               ots stamp "$TARGET"
             else
-              echo "Found ${TARGET}.ots — skipping stamp."
+              echo "Found ${TARGET}.ots; skipping stamp."
             fi
             # Always attempt to upgrade; ignore 'nothing to do' errors
             ots upgrade "${TARGET}.ots" || true
-            mv "${TARGET}.ots" /tmp/proof.ots
+            cp "${TARGET}.ots" /tmp/proof.ots
             ots upgrade /tmp/proof.ots || true
 
             set +e

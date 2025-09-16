@@ -1,4 +1,4 @@
-﻿name: releases-manifest
+name: releases-manifest
 on:
   push:
     paths:
