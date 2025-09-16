@@ -7,13 +7,33 @@ function Read-Fingerprint {
   $raw
 }
 
+# Repo root (for relative path calc)
+function Get-RepoRoot {
+  $top = (& git rev-parse --show-toplevel 2>$null)
+  if ([string]::IsNullOrWhiteSpace($top)) { $top = (Get-Location).Path }
+  # Normalize slashes and trim trailing slash
+  return (($top -replace '\\','/').TrimEnd('/'))
+}
+$RepoRoot = Get-RepoRoot
+
+function To-Rel([string]$path) {
+  if (-not $path) { return $null }
+  $full = (Resolve-Path -LiteralPath $path).Path
+  $full = ($full -replace '\\','/')
+  if ($full.StartsWith($RepoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $rel = $full.Substring($RepoRoot.Length).TrimStart('/','\')
+    return $rel
+  }
+  return $full
+}
+
 function FileInfoJson($path) {
   if (Test-Path $path) {
     $fi = Get-Item $path
     [pscustomobject]@{
-      path   = ($path -replace '\\','/')
+      path   = (To-Rel $fi.FullName)
       size   = [int64]$fi.Length
-      sha256 = (Get-FileHash $path -Algorithm SHA256).Hash.ToLower()
+      sha256 = (Get-FileHash $fi.FullName -Algorithm SHA256).Hash.ToLower()
     }
   } else { $null }
 }
@@ -66,14 +86,17 @@ Get-ChildItem -Path "letter" -Filter "ASI-Letter-v*.md" | ForEach-Object {
   }
 }
 
+# Force array even when it has one item using the unary comma operator
+$releasesSorted = ,($releases | Sort-Object -Property version -Descending)
+
 $manifest = [pscustomobject]@{
   schema  = "asi-letter/releases#1"
   updated = (Get-Date).ToUniversalTime().ToString("s") + "Z"
-  key     = [pscustomobject]@{
+key     = [pscustomobject]@{
     fingerprint_current = $currentFp
     path = $pubkeyPath
   }
-  releases = ($releases | Sort-Object -Property version -Descending)
+  releases = $releasesSorted
 }
 
 $manifest | ConvertTo-Json -Depth 6 | Set-Content "letter/RELEASES.json" -NoNewline
