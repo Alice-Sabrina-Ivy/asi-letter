@@ -1,4 +1,4 @@
-ï»¿name: ots-upgrade
+name: ots-upgrade
 on:
   schedule:
     - cron: "23 * * * *"
@@ -38,15 +38,15 @@ jobs:
 
           HEIGHT=""
           if [[ -n "$TARGET" ]]; then
-            # Only stamp if proof file doesn't exist
-            if [ ! -f "${ASC}.ots" ]; then
-              echo "No .ots present â€” stampingâ€¦"
-              ots stamp "$ASC"
+  echo "Using TARGET='$TARGET'"# Only stamp if proof file doesn't exist
+            if [ ! -f "${TARGET}.ots" ]; then
+              echo "No .ots present — stamping…"
+              ots stamp "$TARGET"
             else
-              echo "Found ${ASC}.ots â€” skipping stamp."
+              echo "Found ${TARGET}.ots — skipping stamp."
             fi
             # Always attempt to upgrade; ignore 'nothing to do' errors
-            ots upgrade "${ASC}.ots" || true
+            ots upgrade "${TARGET}.ots" || true
             mv "${TARGET}.ots" /tmp/proof.ots
             ots upgrade /tmp/proof.ots || true
 
