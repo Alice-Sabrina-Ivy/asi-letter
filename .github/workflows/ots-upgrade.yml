@@ -38,7 +38,15 @@ jobs:
 
           HEIGHT=""
           if [[ -n "$TARGET" ]]; then
-            ots stamp "$TARGET"
+            # Only stamp if proof file doesn't exist
+            if [ ! -f "${ASC}.ots" ]; then
+              echo "No .ots present — stamping…"
+              ots stamp "$ASC"
+            else
+              echo "Found ${ASC}.ots — skipping stamp."
+            fi
+            # Always attempt to upgrade; ignore 'nothing to do' errors
+            ots upgrade "${ASC}.ots" || true
             mv "${TARGET}.ots" /tmp/proof.ots
             ots upgrade /tmp/proof.ots || true
 
@@ -68,3 +76,4 @@ jobs:
         with:
           commit_message: "chore(ots): center footer + update status from newest /letter/*.asc [skip ci]"
           file_pattern: docs/index.html
+
