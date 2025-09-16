@@ -50,12 +50,49 @@ jobs:
             cp "${TARGET}.ots" /tmp/proof.ots
             ots upgrade /tmp/proof.ots || true
 
-            set +e
-            OUT="$(ots verify /tmp/proof.ots 2>&1)"
-            ALT="$("$HOME/go/bin/ots" verify /tmp/proof.ots 2>&1)"
-            OUT="$OUT"$'\n'"$ALT"
-            set -e
-            HEIGHT="$(echo "$OUT" | grep -Eo 'block[[:space:]]*\[?[0-9]+\]?' | grep -Eo '[0-9]+' | tail -n1 || true)"
+            if PY_OUT="$(python - /tmp/proof.ots <<'PY'
+import sys
+from pathlib import Path
+try:
+    from opentimestamps.core.serialize import StreamDeserializationContext
+    from opentimestamps.core.timestamp import DetachedTimestampFile
+    from opentimestamps.core.notary import BitcoinBlockHeaderAttestation
+except Exception:
+    sys.exit(0)
+
+path = Path(sys.argv[1])
+if not path.is_file():
+    sys.exit(0)
+
+try:
+    with path.open('rb') as fh:
+        ctx = StreamDeserializationContext(fh)
+        timestamp = DetachedTimestampFile.deserialize(ctx).timestamp
+except Exception:
+    sys.exit(0)
+
+heights = sorted({att.height for _, att in timestamp.all_attestations()
+                  if isinstance(att, BitcoinBlockHeaderAttestation)})
+if heights:
+    print(heights[-1])
+PY
+)"; then
+              HEIGHT="${PY_OUT//$'\n'/}"
+              HEIGHT="${HEIGHT//$'\r'/}"
+            fi
+
+            if [[ -z "$HEIGHT" ]]; then
+              set +e
+              OUT="$(ots verify /tmp/proof.ots 2>&1)"
+              ALT="$("$HOME/go/bin/ots" verify /tmp/proof.ots 2>&1)"
+              INFO="$(ots info /tmp/proof.ots 2>&1)"
+              OUT="$OUT"$'\n'"$ALT"$'\n'"$INFO"
+              set -e
+              HEIGHT="$(echo "$OUT" |
+                grep -Eo 'block[[:space:]]*#?[0-9]+|blockheight[[:space:]]*#?[0-9]+|BitcoinBlockHeaderAttestation\([0-9]+\)' |
+                grep -Eo '[0-9]+' |
+                tail -n1 || true)"
+            fi
           fi
 
           awk -v height="$HEIGHT" '
