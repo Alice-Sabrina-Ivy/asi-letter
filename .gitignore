@@ -14,4 +14,4 @@ __pycache__/
 .venv/
 
 # Ignore materialized OpenTimestamps proofs (decoded from base64)
-letter/*.asc.ots
+#letter/*.asc.ots
