@@ -12,3 +12,6 @@ docs/index.html.tmp
 # Python caches (if you run ots via Python locally)
 __pycache__/
 .venv/
+
+# Ignore materialized OpenTimestamps proofs (decoded from base64)
+letter/*.asc.ots
