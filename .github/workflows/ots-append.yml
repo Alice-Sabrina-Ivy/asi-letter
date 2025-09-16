@@ -4,6 +4,11 @@ on:
     paths:
       - "docs/letter.md.asc"
       - "docs/index.html"
+  workflow_run:
+    workflows:
+      - ots-upgrade
+    types:
+      - completed
   workflow_dispatch: {}
 
 permissions:
@@ -11,26 +16,66 @@ permissions:
 
 jobs:
   append-proof:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Ensure footer (scriptless, centered)
+      - name: Install OpenTimestamps client
+        run: python -m pip install --upgrade pip opentimestamps-client
+
+      - name: Determine timestamp status line
+        id: status
         shell: bash
         run: |
           set -euo pipefail
+
+          STATUS="Bitcoin anchoring pending. Proof will update automatically."
+          TARGET=""
+
+          if ls letter/*.asc 1>/dev/null 2>&1; then
+            TARGET="$(ls -t letter/*.asc | head -n1)"
+          elif [[ -f docs/letter.md.asc ]]; then
+            TARGET="docs/letter.md.asc"
+          fi
+
+          if [[ -n "$TARGET" && -f "${TARGET}.ots" ]]; then
+            HEIGHT_RAW="$(python .github/scripts/extract_block_height.py "${TARGET}.ots" || true)"
+            HEIGHT="$(printf '%s' "${HEIGHT_RAW}" | tr -d '\r\n')"
+
+            if [[ -n "$HEIGHT" ]]; then
+              STATUS="Bitcoin block <strong>${HEIGHT}</strong> attests the letter existed prior to that block."
+            fi
+          fi
+
+          STATUS_SANITIZED="$(printf '%s' "$STATUS" | tr '\n' ' ' | tr -d '\r')"
+          printf 'status_line=%s\n' "$STATUS_SANITIZED" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure footer (scriptless, centered)
+        shell: bash
+        env:
+          STATUS_LINE: ${{ steps.status.outputs.status_line }}
+        run: |
+          set -euo pipefail
+
           HTML="docs/index.html"
           [[ -f "$HTML" ]] || { echo "Missing $HTML" >&2; exit 1; }
 
           # Remove any prior OTS blocks or stray legacy script tags
           perl -0777 -pe 's/<!-- OTS-START -->.*?<!-- OTS-END -->\s*//gs; s#<script id="ots-proof".*?</script>\s*##gs' -i "$HTML"
 
-          # Minimal, centered footer (no filename; no details)
-          APPENDIX=$'<!-- OTS-START -->\n<section id="timestamp-proof" style="max-width:48rem;margin:2rem auto 0 auto;padding-top:1rem;border-top:1px solid #e5e7eb;text-align:center;font-size:0.95rem;line-height:1.5;">\n  <h3 style="margin:0 0 .5rem 0;font-size:1.05rem;">Timestamp proof (Bitcoin)</h3>\n  <p id="ots-line">Bitcoin anchoring pending. Proof will update automatically.</p>\n</section>\n<!-- OTS-END -->'
+          STATUS="${STATUS_LINE:-Bitcoin anchoring pending. Proof will update automatically.}"
 
-          printf "%s\n" "$APPENDIX" >> "$HTML"
+          cat >> "$HTML" <<EOF
+<!-- OTS-START -->
+<section id="timestamp-proof" style="max-width:48rem;margin:2rem auto 0 auto;padding-top:1rem;border-top:1px solid #e5e7eb;text-align:center;font-size:0.95rem;line-height:1.5;">
+  <h3 style="margin:0 0 .5rem 0;font-size:1.05rem;">Timestamp proof (Bitcoin)</h3>
+  <p id="ots-line">${STATUS}</p>
+</section>
+<!-- OTS-END -->
+EOF
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore(ots): center minimal footer [skip ci]"
+          commit_message: "chore(ots): ensure footer + status [skip ci]"
           file_pattern: docs/index.html
