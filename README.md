@@ -127,6 +127,20 @@ Requires Python 3.8+. Upgrade an existing install if prompted.
 
 ### 4) Verify the timestamp
 
+> **Windows note:** `pip` installs `ots.exe` to `%APPDATA%\Python\Python3x\Scripts\`, which usually isn’t on your `PATH`.
+> Choose either option below before running the generic command.
+>
+> 1. Add the Scripts directory to `PATH`: `py -m site --user-base` prints the base
+>    path, so append `\Scripts` to that location (for example
+>    `%APPDATA%\Python\Python312\Scripts\`) and add it to your PATH environment
+>    variable.
+> 2. Invoke the tool with its full path each time:
+>    ```powershell
+>    & "$env:APPDATA\Python\Python312\Scripts\ots.exe" verify letter.md.asc.ots
+>    ```
+>
+> The commands below assume `ots` is already on your `PATH`.
+
 ```sh
 ots verify letter.md.asc.ots
 ```
