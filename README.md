@@ -94,6 +94,16 @@ Requires Python 3.8+. Upgrade an existing install if prompted.
   ```powershell
   py -m pip install --upgrade opentimestamps-client
   ```
+  The `opentimestamps-client` dependency `python-bitcoinlib` expects a **64-bit** OpenSSL runtime. Install a trusted Win64
+  build such as [Shining Light Productions' OpenSSL installer](https://slproweb.com/products/Win32OpenSSL.html) and then add
+  its `bin` directory to your user PATH so Python can locate the DLLs:
+  ```powershell
+  $opensslPath = "C:\Program Files\OpenSSL-Win64\bin"
+  [Environment]::SetEnvironmentVariable("PATH", "$env:PATH;$opensslPath", "User")
+  ```
+  Open a new PowerShell session so the updated PATH is loaded before rerunning the install command. If you see
+  `WinError 193: %1 is not a valid Win32 application` during install or use, revisit this step to ensure the OpenSSL
+  architecture matches your Python build.
 - **macOS / Linux:**
   ```sh
   python3 -m pip install --upgrade opentimestamps-client
