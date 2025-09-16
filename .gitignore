@@ -1,5 +1,14 @@
-﻿$GITHUB_OUTPUT
-$GITHUB_PATH
-$GITHUB_ENV
-$HTML
-$HTML.tmp
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+*.code-workspace
+
+# Temp artifacts
+*.tmp
+*.log
+docs/index.html.tmp
+
+# Python caches (if you run ots via Python locally)
+__pycache__/
+.venv/
