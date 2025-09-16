@@ -84,28 +84,57 @@ gpg --verify letter.html.asc letter.html
 
 ## Verify Bitcoin timestamp (OpenTimestamps)
 
-OpenTimestamps proofs are stored as base64 text files (`*.asc.ots.base64`) so pull requests stay text‑only. Decode before running `ots verify`.
+OpenTimestamps proofs are stored as base64 text files (`*.asc.ots.base64`) so pull requests stay text-only. Follow these steps to independently confirm the Bitcoin timestamp.
 
-**From the site footer:** copy the base64 proof → save as `letter.md.asc.ots.base64` → decode → verify:
+### 1) Install the OpenTimestamps client
 
-```
-python -m pip install --upgrade opentimestamps-client
-base64 -d letter.md.asc.ots.base64 > letter.md.asc.ots
+Requires Python 3.8+. Upgrade an existing install if prompted.
+
+- **Windows (PowerShell):**
+  ```powershell
+  py -m pip install --upgrade opentimestamps-client
+  ```
+- **macOS / Linux:**
+  ```sh
+  python3 -m pip install --upgrade opentimestamps-client
+  ```
+
+### 2) Obtain the base64 proof (choose ONE)
+
+**A) From the site footer:**
+1. Copy the base64 OpenTimestamps proof from the site footer.
+2. Paste it into a new UTF-8 text file named `letter.md.asc.ots.base64`.
+
+**B) From the repo history:**
+1. Export the binary proofs locally (they’re ignored by git):
+   ```sh
+   bash scripts/export-ots-proofs.sh
+   ```
+2. Use the matching file under `letter/` (for example `letter/letter.md.asc.ots`).
+
+### 3) Decode the proof to a binary `.ots` file
+
+- **macOS / Linux:**
+  ```sh
+  base64 -d letter.md.asc.ots.base64 > letter.md.asc.ots
+  ```
+- **Windows (PowerShell):**
+  ```powershell
+  certutil -decode letter.md.asc.ots.base64 letter.md.asc.ots
+  ```
+
+> **Tip:** To avoid writing an intermediate file you can stream directly: `base64 -d letter/<name>.asc.ots.base64 | ots verify -`.
+
+### 4) Verify the timestamp
+
+```sh
 ots verify letter.md.asc.ots
 ```
 
-**From the repo history:** run the helper script to materialize the binary proofs (ignored by git):
-
+**Expected result (example):**
 ```
-bash scripts/export-ots-proofs.sh
-ots verify letter/<name>.asc.ots
+OK   bitcoin block 827000
 ```
 
-Alternatively decode a single proof without writing to disk:
-
-```
-base64 -d letter/<name>.asc.ots.base64 | ots verify -
-```
-
-You’ll see either a pending status or a confirmed **Bitcoin block** height. Independent verification is strongest against your own Bitcoin node.
+- If the output says `Unknown` or `Pending`, the timestamp hasn’t been confirmed on-chain yet—re-run later or against your own Bitcoin node for the strongest assurance.
 
