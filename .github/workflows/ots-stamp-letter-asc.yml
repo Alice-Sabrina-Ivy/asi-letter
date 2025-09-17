@@ -50,6 +50,12 @@ jobs:
           git fetch origin "$branch"
           git pull --rebase --autostash origin "$branch"
 
+      - name: Wait for GitHub Pages to be idle
+        if: steps.stamp.outputs.touched == '1'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: .github/scripts/wait_for_pages_idle.sh
+
       - uses: stefanzweifel/git-auto-commit-action@v5
         if: steps.stamp.outputs.touched == '1'
         with:
