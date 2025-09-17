@@ -53,5 +53,5 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v5
         if: steps.stamp.outputs.touched == '1'
         with:
-          commit_message: "chore(ots): add proofs for new /letter/*.asc [skip ci]"
+          commit_message: "chore(ots): add proofs for new /letter/*.asc (auto)"
           file_pattern: letter/*.asc.ots
