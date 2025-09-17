@@ -45,6 +45,7 @@ jobs:
         run: .github/scripts/wait_for_pages_idle.sh
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
+          branch: ${{ github.ref_name }}
           commit_message: "chore(manifest): refresh release assets [manifest-auto]"
           file_pattern: |
             letter/RELEASES.json
