@@ -47,6 +47,9 @@ jobs:
             fi
             # Always attempt to upgrade; ignore 'nothing to do' errors
             ots upgrade "${TARGET}.ots" || true
+            if [[ -f "${TARGET}.ots" ]]; then
+              git add "${TARGET}.ots"
+            fi
             cp "${TARGET}.ots" /tmp/proof.ots
             ots upgrade /tmp/proof.ots || true
 
@@ -85,6 +88,6 @@ jobs:
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore(ots): center footer + update status from newest /letter/*.asc [skip ci]"
+          commit_message: "chore(ots): upgrade proof + refresh status [skip ci]"
           file_pattern: docs/index.html
 
