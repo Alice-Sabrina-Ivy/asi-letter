@@ -29,7 +29,9 @@ jobs:
       - name: Generate manifest (python)
         run: python3 scripts/gen_releases_manifest.py
       - name: Sync docs with latest letter
-        run: python3 scripts/sync_docs_with_latest.py
+        run: |
+          python3 scripts/sync_docs_with_latest.py
+          python3 scripts/sync_docs_with_latest.py --check
       - name: Update version metadata in docs
         run: python3 scripts/update_version_metadata.py
       - name: Rebase onto latest ${{ github.ref_name }} before committing
