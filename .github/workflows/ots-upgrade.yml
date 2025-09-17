@@ -1,7 +1,7 @@
 name: ots-upgrade
 on:
   schedule:
-    - cron: "23 * * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch: {}
   workflow_run:
     workflows:
@@ -28,7 +28,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detect prior Bitcoin attestation for scheduled runs
+        id: maybe_skip
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          SHOULD_SKIP="false"
+          if [[ "$EVENT_NAME" == "schedule" ]]; then
+            if [[ -f docs/index.html ]] && grep -Eq 'Bitcoin block <strong>[0-9]+' docs/index.html; then
+              echo "Scheduled run detected an existing Bitcoin block attestation in docs/index.html; skipping upgrade."
+              SHOULD_SKIP="true"
+            fi
+          fi
+
+          printf 'should_skip=%s\n' "$SHOULD_SKIP" >> "$GITHUB_OUTPUT"
+
       - name: Install OpenTimestamps client + alt verifier
+        if: steps.maybe_skip.outputs.should_skip != 'true'
         run: |
           python -m pip install --upgrade opentimestamps-client
           wget -q https://go.dev/dl/go1.22.5.linux-amd64.tar.gz
@@ -41,6 +59,7 @@ jobs:
 
       - name: Prepare proof + determine footer status
         id: status
+        if: steps.maybe_skip.outputs.should_skip != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -100,6 +119,7 @@ jobs:
           printf 'status_line=%s\n' "$STATUS_SANITIZED" >> "$GITHUB_OUTPUT"
 
       - name: Ensure footer (scriptless, centered)
+        if: steps.maybe_skip.outputs.should_skip != 'true'
         shell: bash
         env:
           STATUS_LINE: ${{ steps.status.outputs.status_line }}
@@ -124,6 +144,7 @@ jobs:
           } >> "$HTML"
 
       - name: Rebase onto latest ${{ github.ref_name }} before committing
+        if: steps.maybe_skip.outputs.should_skip != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -132,11 +153,13 @@ jobs:
           git pull --rebase --autostash origin "$branch"
 
       - name: Wait for GitHub Pages to be idle
+        if: steps.maybe_skip.outputs.should_skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: .github/scripts/wait_for_pages_idle.sh
 
       - uses: stefanzweifel/git-auto-commit-action@v5
+        if: steps.maybe_skip.outputs.should_skip != 'true'
         with:
           commit_message: "chore(ots): upgrade proof + refresh status [ots-upgrade-auto]"
           file_pattern: docs/index.html
