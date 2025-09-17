@@ -15,26 +15,28 @@ jobs:
         with:
           python-version: '3.x'
 
-      - run: python -m pip install --upgrade pip opentimestamps-client
+      - run: |
+          python -m pip install --upgrade pip opentimestamps-client
+          echo "$(python -c 'import sysconfig; print(sysconfig.get_path("scripts"))')" >> "$GITHUB_PATH"
 
       - name: Show OTS info/verify (before)
         run: |
           set -e
           echo "::group::info"
-          python -m opentimestamps.client info letter/ASI-Letter-v2025.09.14.md.asc.ots || true
+          ots info letter/ASI-Letter-v2025.09.14.md.asc.ots || true
           echo "::endgroup::"
           echo "::group::verify (before)"
-          python -m opentimestamps.client verify letter/ASI-Letter-v2025.09.14.md.asc.ots || true
+          ots verify letter/ASI-Letter-v2025.09.14.md.asc.ots || true
           echo "::endgroup::"
 
       - name: Upgrade proof
         run: |
-          python -m opentimestamps.client upgrade letter/ASI-Letter-v2025.09.14.md.asc.ots || true
+          ots upgrade letter/ASI-Letter-v2025.09.14.md.asc.ots || true
 
       - name: Show verify (after)
         run: |
           echo "::group::verify (after)"
-          python -m opentimestamps.client verify letter/ASI-Letter-v2025.09.14.md.asc.ots || true
+          ots verify letter/ASI-Letter-v2025.09.14.md.asc.ots || true
           echo "::endgroup::"
 
       - name: Commit upgraded proof if changed
