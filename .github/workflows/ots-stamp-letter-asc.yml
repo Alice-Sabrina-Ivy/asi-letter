@@ -5,6 +5,10 @@ on:
       - 'letter/*.asc'
   workflow_dispatch: {}
 
+concurrency:
+  group: letter-artifacts-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
