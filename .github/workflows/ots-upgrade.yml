@@ -90,6 +90,14 @@ jobs:
             }' "$HTML" > "$HTML.tmp"
           mv "$HTML.tmp" "$HTML"
 
+      - name: Rebase onto latest ${{ github.ref_name }} before committing
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="${GITHUB_REF##*/}"
+          git fetch origin "$branch"
+          git pull --rebase --autostash origin "$branch"
+
       - name: Wait for GitHub Pages to be idle
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
