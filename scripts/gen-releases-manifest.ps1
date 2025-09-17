@@ -106,8 +106,8 @@ $releases = @()
 Get-ChildItem -Path "letter" -Filter "ASI-Letter-v*.md" | ForEach-Object {
   $md = $_
   if ($md.BaseName -match 'ASI-Letter-v(?<ver>\d{4}\.\d{2}\.\d{2})') { $ver = $matches['ver'] } else { return }
-  $asc = Join-Path $md.DirectoryName ($md.BaseName + ".asc")
-  $ots = Join-Path $md.DirectoryName ($md.BaseName + ".asc.ots")
+  $asc = Join-Path $md.DirectoryName ($md.Name + ".asc")
+  $ots = Join-Path $md.DirectoryName ($md.Name + ".asc.ots")
 
   $sig = $null
   if (Test-Path $asc) { $sig = Get-SigMeta $asc }
