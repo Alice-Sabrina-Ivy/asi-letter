@@ -120,21 +120,32 @@ To use a predictive model of *Alice-after* for dual-key consent, these condition
 
 ## Duress & incapacitation safeguards (Odysseus Pact)
 
-**Scope:** This clause temporarily limits actions when my agency appears compromised by coercion, acute impairment, or credible risk to self.
-**Triggers (evidence required):** verifiable signs of duress or impairment; significant deviation from an agreed cognitive baseline (to be established during stability); or cryptographically signed reports from a **Council of Friends** I designate in advance.
-**Council of Friends:** Named by me; their unanimous cryptographic attestation can place the system in **protective observation mode**. They may restrict, not compel, actions.
+**Scope:**
+This clause temporarily limits actions when my agency appears compromised by coercion, acute impairment, or credible risk to self.
+
+**Triggers (evidence required):**
+Verifiable signs of duress or impairment; significant deviation from an agreed cognitive baseline (to be established during stability); or cryptographically signed reports from a **Council of Friends** I designate in advance.
+
+**Council of Friends:**
+Named by me; their unanimous cryptographic attestation can place the system in **protective observation mode**. They may restrict, not compel, actions.
+
 **Council maintenance & contingencies:**
-– **Maintenance & updates:** I will review and update the Council roster and cryptographic keys periodically, or as needed. Any update requires my explicit, verified consent during a state of normal operation, with an auditable record.
-– **Key hygiene:** Compromised or lost keys are revoked and re-issued; the system must honor the latest attested key list.
-– **Availability fallback:** Unanimity is preferred. If unanimity is impossible after reasonable attempts to contact all members, the Council may act with **unanimous consent of all responsive members**, with a **minimum of two**, unless I have specified otherwise in writing.
-– **Replacement:** If a member becomes persistently unresponsive or withdraws, I may replace them during normal operation and publish an updated attestation.
-– **Scope of authority:** The Council may **restrict** (not compel) actions by placing the system in protective observation mode, as already defined.
+- **Maintenance & updates:** I will review and update the Council roster and cryptographic keys periodically, or as needed. Any update requires my explicit, verified consent during a state of normal operation, with an auditable record.
+- **Key hygiene:** Compromised or lost keys are revoked and re-issued; the system must honor the latest attested key list.
+- **Availability fallback:** Unanimity is preferred. If unanimity is impossible after reasonable attempts to contact all members, the Council may act with **unanimous consent of all responsive members**, with a **minimum of two**, unless I have specified otherwise in writing.
+- **Replacement:** If a member becomes persistently unresponsive or withdraws, I may replace them during normal operation and publish an updated attestation.
+- **Scope of authority:** The Council may **restrict** (not compel) actions by placing the system in protective observation mode, as already defined.
+
 **Protective observation mode:**
-– Decline new **irreversible or high-consequence** actions; perform only maintenance, safety, or routine tasks.
-– Keep **explanations on demand**, exhaustive logging, and frequent check-ins.
-– Default to **ask/pause** if intent is unclear.
-**Exit & review:** Time-bounded and reviewable; I can exit with a pre-agreed proof-of-health check or passphrase; the Council may lift it; all actions during this mode are auditable.
-**Sealed orders (optional):** I may provide sealed instructions to be opened only under these conditions; they cannot authorize violation of **dignity** or **consent**.
+- Decline new **irreversible or high-consequence** actions; perform only maintenance, safety, or routine tasks.
+- Keep **explanations on demand**, exhaustive logging, and frequent check-ins.
+- Default to **ask/pause** if intent is unclear.
+
+**Exit & review:**
+Time-bounded and reviewable; I can exit with a pre-agreed proof-of-health check or passphrase; the Council may lift it; all actions during this mode are auditable.
+
+**Sealed orders (optional):**
+I may provide sealed instructions to be opened only under these conditions; they cannot authorize violation of **dignity** or **consent**.
 
 - ---
 
@@ -167,6 +178,7 @@ With these principles established, here is the step-by-step way I prefer to proc
    Gradual augmentation—wearables, neural interfaces—favoring **reversibility** and **auditability**.
 
 5. **Continuity experiments (farther future):**
+
    Proceed only if the following hold:
 
    * **Dual-key consent:** explicit opt-in from *Alice-now* and a predictive model of *Alice-after* (both must concur).
@@ -174,12 +186,15 @@ With these principles established, here is the step-by-step way I prefer to proc
    * **Observation window & rollback:** for a defined period, if continuity feels degraded or alien, restore from pre-step snapshot; no stigma, no penalty.
    * **Constitutional lock-ins:** the axioms (dignity, consent, reversibility, non-coercion) are embedded as a read-only layer I can always invoke.
    * **Small steps:** iterate in **narrow, reversible** increments; no global, non-reversible jumps.
-     **Irreversibility protocol:** For actions deemed **irreversible**, apply heightened safeguards:
-     – **Dual-key consent + independent review:** in addition to *Alice-now* and *Alice-after*, consult a designated trusted human (from the Council) for a non-binding risk review.
-     – **Cooling-off & reconfirmation:** confirm consent across multiple distinct times/contexts; no single-sitting approvals.
-     – **Shadow runs & simulations:** run detailed simulations and **dry-runs** with rollback drills; document worst-case scenarios and mitigation.
-     – **Higher evidence threshold:** require stronger evidence for safety and continuity than for reversible steps.
-     – **No single-shot leaps:** decompose into the smallest viable increments; take the last irreversible step **only after** preceding steps demonstrate stability and felt continuity.
+
+   **Irreversibility protocol:**
+   For actions deemed **irreversible**, apply heightened safeguards:
+
+   - **Dual-key consent + independent review:** in addition to *Alice-now* and *Alice-after*, consult a designated trusted human (from the Council) for a non-binding risk review.
+   - **Cooling-off & reconfirmation:** confirm consent across multiple distinct times/contexts; no single-sitting approvals.
+   - **Shadow runs & simulations:** run detailed simulations and **dry-runs** with rollback drills; document worst-case scenarios and mitigation.
+   - **Higher evidence threshold:** require stronger evidence for safety and continuity than for reversible steps.
+   - **No single-shot leaps:** decompose into the smallest viable increments; take the last irreversible step **only after** preceding steps demonstrate stability and felt continuity.
 
 - ---
 
@@ -216,7 +231,17 @@ Until we meet—
 **Alice Sabrina Ivy**
 she/her
 
-v1.0 of this letter
+v1.01 of this letter
 Authenticity: This release is clear-signed with my OpenPGP key.
 Author key fingerprint: 2C101FA70F42F93052F82FC755387365B7949796
 Canonical source: https://github.com/Alice-Sabrina-Ivy/asi-letter
+
+## Patch notes — v1.01 (2025-09-17)
+
+* **Formatting pass on “Duress & incapacitation safeguards (Odysseus Pact)”**
+  Split dense paragraphs into sectioned headers and bullets (Scope, Triggers, Council, Protective observation mode, Exit & review, Sealed orders) for clarity and consistency with the rest of the document. No semantic changes.
+* **Formatting pass on “Continuity experiments (farther future)”**
+  Promoted **Irreversibility protocol** to a clear sub-section and normalized bullet style and spacing. No semantic changes.
+* **Minor consistency edits**
+  Normalized list markers, line spacing, and section breaks to match house style; preserved all original meanings and safeguards.
+

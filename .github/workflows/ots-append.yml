@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   append-proof:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && (github.event_name != 'push' || !contains(github.event.head_commit.message || '', '[ots-append-auto]')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -81,5 +81,5 @@ jobs:
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore(ots): ensure footer + status [skip ci]"
+          commit_message: "chore(ots): ensure footer + status [ots-append-auto]"
           file_pattern: docs/index.html
