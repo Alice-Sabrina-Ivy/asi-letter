@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-import base64
-import binascii
 import datetime as dt
 import hashlib
 import os
@@ -130,14 +128,6 @@ def parse_sig_metadata(asc_path: Path) -> Optional[Dict[str, Optional[str]]]:
     return None
 
 
-def decode_base64(contents: str, description: str) -> bytes:
-    normalized = re.sub(r"\s+", "", contents)
-    try:
-        return base64.b64decode(normalized, validate=True)
-    except (binascii.Error, ValueError) as exc:
-        raise ManifestError(f"Invalid base64 data in {description}: {exc}") from exc
-
-
 def ots_metadata(ots_path: Path, base: Path) -> Optional[Dict[str, Any]]:
     if ots_path.exists():
         info = file_info(ots_path, base)
@@ -146,23 +136,6 @@ def ots_metadata(ots_path: Path, base: Path) -> Optional[Dict[str, Any]]:
         info = dict(info)
         info["encoding"] = "binary"
         return info
-
-    base64_path = ots_path.with_name(ots_path.name + ".base64")
-    if base64_path.exists():
-        encoded_info = file_info(base64_path, base)
-        if encoded_info is None:
-            return None
-        contents = base64_path.read_text(encoding="utf-8")
-        raw_bytes = decode_base64(contents, encoded_info["path"])
-        digest = hashlib.sha256(raw_bytes).hexdigest()
-        return {
-            "path": encoded_info["path"],
-            "decoded_path": relativize(ots_path, base),
-            "encoding": "base64",
-            "size": len(raw_bytes),
-            "sha256": digest,
-            "encoded": encoded_info,
-        }
 
     return None
 
