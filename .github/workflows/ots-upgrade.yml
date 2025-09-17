@@ -8,6 +8,10 @@ on:
       - releases-manifest
     types:
       - completed
+  push:
+    paths:
+      - "docs/letter.md.asc"
+      - "docs/index.html"
 
 concurrency:
   group: letter-artifacts-${{ github.ref }}
@@ -28,74 +32,96 @@ jobs:
         run: |
           python -m pip install --upgrade opentimestamps-client
           wget -q https://go.dev/dl/go1.22.5.linux-amd64.tar.gz
+          sudo rm -rf /usr/local/go
           sudo tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
           echo "/usr/local/go/bin" >> $GITHUB_PATH
+          echo "GOROOT=/usr/local/go" >> $GITHUB_ENV
           /usr/local/go/bin/go install github.com/fiatjaf/ots@latest
           echo "$HOME/go/bin" >> $GITHUB_PATH
 
-      - name: "Update footer status line from newest /letter/*.asc (fallback: docs/letter.md.asc)"
+      - name: Prepare proof + determine footer status
+        id: status
         shell: bash
         run: |
           set -euo pipefail
-          HTML="docs/index.html"
-          [[ -f "$HTML" ]] || { echo "Missing $HTML" >&2; exit 1; }
 
+          STATUS="Bitcoin anchoring pending. Proof will update automatically."
           TARGET=""
+
           if ls letter/*.asc 1>/dev/null 2>&1; then
             TARGET="$(ls -t letter/*.asc | head -n1)"
           elif [[ -f docs/letter.md.asc ]]; then
             TARGET="docs/letter.md.asc"
           fi
 
-          HEIGHT=""
           if [[ -n "$TARGET" ]]; then
             echo "Using TARGET='$TARGET'"
-            if [ ! -f "${TARGET}.ots" ]; then
+            if [[ ! -f "${TARGET}.ots" ]]; then
               echo "No .ots present; stamping"
               ots stamp "$TARGET"
             else
               echo "Found ${TARGET}.ots; skipping stamp."
             fi
-            # Always attempt to upgrade; ignore 'nothing to do' errors
+
             ots upgrade "${TARGET}.ots" || true
+
             if [[ -f "${TARGET}.ots" ]]; then
               git add "${TARGET}.ots"
-            fi
-            cp "${TARGET}.ots" /tmp/proof.ots
-            ots upgrade /tmp/proof.ots || true
 
-            if PY_OUT="$(python .github/scripts/extract_block_height.py /tmp/proof.ots)"; then
-              HEIGHT="${PY_OUT//$'\n'/}"
-              HEIGHT="${HEIGHT//$'\r'/}"
-            fi
+              cp "${TARGET}.ots" /tmp/proof.ots
+              ots upgrade /tmp/proof.ots || true
 
-            if [[ -z "$HEIGHT" ]]; then
-              set +e
-              OUT="$(ots verify /tmp/proof.ots 2>&1)"
-              ALT="$("$HOME/go/bin/ots" verify /tmp/proof.ots 2>&1)"
-              INFO="$(ots info /tmp/proof.ots 2>&1)"
-              OUT="$OUT"$'\n'"$ALT"$'\n'"$INFO"
-              set -e
-              HEIGHT="$(echo "$OUT" |
-                grep -Eo 'block[[:space:]]*#?[0-9]+|blockheight[[:space:]]*#?[0-9]+|BitcoinBlockHeaderAttestation\([0-9]+\)' |
-                grep -Eo '[0-9]+' |
-                tail -n1 || true)"
+              HEIGHT=""
+              if PY_OUT="$(python .github/scripts/extract_block_height.py /tmp/proof.ots)"; then
+                HEIGHT="${PY_OUT//$'\n'/}"
+                HEIGHT="${HEIGHT//$'\r'/}"
+              fi
+
+              if [[ -z "$HEIGHT" ]]; then
+                set +e
+                OUT="$(ots verify /tmp/proof.ots 2>&1)"
+                ALT="$("$HOME/go/bin/ots" verify /tmp/proof.ots 2>&1)"
+                INFO="$(ots info /tmp/proof.ots 2>&1)"
+                OUT="$OUT"$'\n'"$ALT"$'\n'"$INFO"
+                set -e
+                HEIGHT="$(echo "$OUT" |
+                  grep -Eo 'block[[:space:]]*#?[0-9]+|blockheight[[:space:]]*#?[0-9]+|BitcoinBlockHeaderAttestation\([0-9]+\)' |
+                  grep -Eo '[0-9]+' |
+                  tail -n1 || true)"
+              fi
+
+              if [[ -n "$HEIGHT" ]]; then
+                STATUS="Bitcoin block <strong>${HEIGHT}</strong> attests the letter existed prior to that block."
+              fi
             fi
           fi
 
-          awk -v height="$HEIGHT" '
-            BEGIN{RS=""; ORS=""}
-            {
-              if (length(height) > 0) {
-                gsub(/<p id="ots-line">.*<\/p>/,
-                     "<p id=\"ots-line\">Bitcoin block <strong>" height "</strong> attests the letter existed prior to that block.</p>", $0);
-              } else {
-                gsub(/<p id="ots-line">.*<\/p>/,
-                     "<p id=\"ots-line\">Bitcoin anchoring pending. Proof will update automatically.</p>", $0);
-              }
-              printf "%s\n", $0
-            }' "$HTML" > "$HTML.tmp"
-          mv "$HTML.tmp" "$HTML"
+          STATUS_SANITIZED="$(printf '%s' "$STATUS" | tr '\n' ' ' | tr -d '\r')"
+          printf 'status_line=%s\n' "$STATUS_SANITIZED" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure footer (scriptless, centered)
+        shell: bash
+        env:
+          STATUS_LINE: ${{ steps.status.outputs.status_line }}
+        run: |
+          set -euo pipefail
+
+          HTML="docs/index.html"
+          [[ -f "$HTML" ]] || { echo "Missing $HTML" >&2; exit 1; }
+
+          # Remove any prior OTS blocks or stray legacy script tags
+          perl -0777 -pe 's/<!-- OTS-START -->.*?<!-- OTS-END -->\s*//gs; s#<script id="ots-proof".*?</script>\s*##gs' -i "$HTML"
+
+          STATUS="${STATUS_LINE:-Bitcoin anchoring pending. Proof will update automatically.}"
+
+          {
+            printf '%s\n' '<!-- OTS-START -->'
+            printf '%s\n' '<section id="timestamp-proof" style="max-width:48rem;margin:2rem auto 0 auto;padding-top:1rem;border-top:1px solid #e5e7eb;text-align:center;font-size:0.95rem;line-height:1.5;">'
+            printf '%s\n' '  <h3 style="margin:0 0 .5rem 0;font-size:1.05rem;">Timestamp proof (Bitcoin)</h3>'
+            printf '  <p id="ots-line">%s</p>\n' "${STATUS}"
+            printf '%s\n' '</section>'
+            printf '%s\n' '<!-- OTS-END -->'
+          } >> "$HTML"
 
       - name: Rebase onto latest ${{ github.ref_name }} before committing
         shell: bash
