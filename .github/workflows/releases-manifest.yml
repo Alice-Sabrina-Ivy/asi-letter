@@ -4,7 +4,7 @@ on:
     paths:
       - "letter/**"
       - "keys/**"
-      - "scripts/gen-releases-manifest.ps1"
+      - "scripts/gen_releases_manifest.py"
   workflow_dispatch: {}
 
 permissions:
@@ -15,9 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Generate manifest (pwsh)
-        shell: pwsh
-        run: scripts/gen-releases-manifest.ps1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Generate manifest (python)
+        run: python3 scripts/gen_releases_manifest.py
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore(manifest): update letter/RELEASES.json [skip ci]"
