@@ -7,6 +7,10 @@ on:
       - "scripts/gen_releases_manifest.py"
   workflow_dispatch: {}
 
+concurrency:
+  group: letter-artifacts-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 

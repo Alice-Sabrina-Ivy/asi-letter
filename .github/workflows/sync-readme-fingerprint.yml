@@ -5,6 +5,10 @@ on:
       - "keys/FINGERPRINT"
   workflow_dispatch: {}
 
+concurrency:
+  group: letter-artifacts-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
