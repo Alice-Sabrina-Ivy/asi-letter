@@ -3,16 +3,18 @@
 
 from __future__ import annotations
 
+import argparse
 import base64
 import binascii
 import datetime as dt
 import hashlib
+import json
 import os
 import re
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 
 RE_VERSION = re.compile(r"ASI-Letter-v(?P<ver>\d{4}\.\d{2}\.\d{2})\.md\Z")
@@ -101,7 +103,10 @@ def ensure_gpg_keys(key_dir: Path) -> None:
             raise ManifestError("gpg executable not found") from exc
 
 
-def parse_sig_metadata(asc_path: Path) -> Optional[Dict[str, Optional[str]]]:
+SignatureMeta = Dict[str, Union[str, int, None]]
+
+
+def parse_sig_metadata(asc_path: Path) -> Optional[SignatureMeta]:
     if not asc_path.exists():
         return None
 
@@ -118,15 +123,27 @@ def parse_sig_metadata(asc_path: Path) -> Optional[Dict[str, Optional[str]]]:
 
     fingerprint: Optional[str] = None
     uid: Optional[str] = None
+    timestamp: Optional[int] = None
     for line in proc.stdout.splitlines():
         if line.startswith("[GNUPG:]"):
             parts = line.split()
             if len(parts) >= 3 and parts[1] == "VALIDSIG":
                 fingerprint = parts[2].upper()
+                if len(parts) >= 5:
+                    try:
+                        timestamp = int(parts[4])
+                    except ValueError:
+                        timestamp = None
             elif len(parts) >= 4 and parts[1] == "GOODSIG":
                 uid = " ".join(parts[3:]).strip()
     if fingerprint:
-        return {"fingerprint": fingerprint, "uid": uid or None}
+        data: SignatureMeta = {
+            "fingerprint": fingerprint,
+            "uid": uid or None,
+        }
+        if timestamp is not None:
+            data["timestamp"] = timestamp
+        return data
     return None
 
 
@@ -167,8 +184,11 @@ def ots_metadata(ots_path: Path, base: Path) -> Optional[Dict[str, Any]]:
     return None
 
 
-def collect_releases(letter_dir: Path, base: Path, current_fp: str) -> List[Dict[str, Any]]:
+def collect_releases(
+    letter_dir: Path, base: Path, current_fp: str
+) -> Tuple[List[Dict[str, Any]], List[int]]:
     releases: List[Dict[str, Any]] = []
+    signature_epochs: List[int] = []
     for md_path in letter_dir.glob("ASI-Letter-v*.md"):
         match = RE_VERSION.fullmatch(md_path.name)
         if not match:
@@ -182,6 +202,8 @@ def collect_releases(letter_dir: Path, base: Path, current_fp: str) -> List[Dict
             "fingerprint": sig_meta["fingerprint"] if sig_meta else current_fp,
             "uid": sig_meta["uid"] if sig_meta else None,
         }
+        if sig_meta and isinstance(sig_meta.get("timestamp"), int):
+            signature_epochs.append(int(sig_meta["timestamp"]))
 
         releases.append(
             {
@@ -196,7 +218,7 @@ def collect_releases(letter_dir: Path, base: Path, current_fp: str) -> List[Dict
         )
 
     releases.sort(key=lambda item: item["version"], reverse=True)
-    return releases
+    return releases, signature_epochs
 
 
 def build_manifest(base: Path) -> Dict[str, Any]:
@@ -206,10 +228,16 @@ def build_manifest(base: Path) -> Dict[str, Any]:
     current_fp = read_fingerprint(keys_dir / "FINGERPRINT")
     ensure_gpg_keys(keys_dir)
 
-    releases = collect_releases(letter_dir, base, current_fp)
+    releases, signature_epochs = collect_releases(letter_dir, base, current_fp)
 
     pubkey_path = keys_dir / "alice-asi-publickey.asc"
-    updated = dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    if signature_epochs:
+        updated_dt = dt.datetime.fromtimestamp(
+            max(signature_epochs), tz=dt.timezone.utc
+        )
+    else:
+        updated_dt = dt.datetime.now(tz=dt.timezone.utc)
+    updated = updated_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
     return {
         "schema": "asi-letter/releases#2",
@@ -221,15 +249,36 @@ def build_manifest(base: Path) -> Dict[str, Any]:
         "releases": releases,
     }
 
+def parse_args(argv: Sequence[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Generate letter release manifest")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help=(
+            "Only check if the generated manifest matches the existing file. "
+            "Exit with status 1 if an update is required."
+        ),
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("letter/RELEASES.json"),
+        help="Path to the manifest file (defaults to letter/RELEASES.json).",
+    )
+    return parser.parse_args(list(argv))
 
-def write_manifest(manifest: Dict[str, Any], output_path: Path) -> None:
-    import json
 
-    json_text = json.dumps(manifest, indent=2)
-    output_path.write_text(json_text, encoding="utf-8")
+def write_manifest_text(manifest: Dict[str, Any]) -> str:
+    return json.dumps(manifest, indent=2)
+
+
+def resolve_output_path(base: Path, output: Path) -> Path:
+    return output if output.is_absolute() else base / output
 
 
 def main(argv: Iterable[str] | None = None) -> int:
+    args = parse_args(tuple(argv or []))
+
     base = repo_root(Path.cwd())
     try:
         manifest = build_manifest(base)
@@ -237,11 +286,38 @@ def main(argv: Iterable[str] | None = None) -> int:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
-    output_path = base / "letter" / "RELEASES.json"
-    write_manifest(manifest, output_path)
+    output_path = resolve_output_path(base, args.output)
+    manifest_text = write_manifest_text(manifest)
+
+    if args.check:
+        try:
+            current_text = output_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            print(
+                f"Manifest not found at {output_path}. Run the generator to create it.",
+                file=sys.stderr,
+            )
+            return 1
+
+        try:
+            rel = output_path.relative_to(base)
+        except ValueError:
+            rel = output_path
+
+        if current_text == manifest_text:
+            print(f"{rel} is up to date.")
+            return 0
+
+        print(
+            f"{rel} is out of date. Run 'python3 scripts/gen_releases_manifest.py' and commit the updated file.",
+            file=sys.stderr,
+        )
+        return 1
+
+    output_path.write_text(manifest_text, encoding="utf-8")
     print(f"Wrote {relativize(output_path, base)}")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

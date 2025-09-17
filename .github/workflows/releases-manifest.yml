@@ -22,9 +22,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Generate manifest (python)
-        run: python3 scripts/gen_releases_manifest.py
-      - uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore(manifest): update letter/RELEASES.json [skip ci]"
-          file_pattern: "letter/RELEASES.json"
+      - name: Check manifest freshness (python)
+        run: python3 scripts/gen_releases_manifest.py --check
