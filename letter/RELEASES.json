@@ -1,11 +1,36 @@
 {
   "schema": "asi-letter/releases#2",
-  "updated": "2025-09-17T02:33:03Z",
+  "updated": "2025-09-17T17:35:58Z",
   "key": {
     "fingerprint_current": "2C101FA70F42F93052F82FC755387365B7949796",
     "path": "keys/alice-asi-publickey.asc"
   },
   "releases": [
+    {
+      "version": "2025.09.17",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2025.09.17.md",
+          "size": 16396,
+          "sha256": "2fe52e03ebc144bef0326525ef75a58d16f54db11b5fead7ebddb2c9715b82d6"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2025.09.17.md.asc",
+          "size": 16736,
+          "sha256": "bb384c55c3f9180210330c1b9c90b3a72ceb6999e476627c9cb263c1a7ec042c"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2025.09.17.md.asc.ots",
+          "size": 718,
+          "sha256": "49bd3700f389d874483dc6e7a2788ad4aeba708e975a7cabf2fa795766f8e6a2",
+          "encoding": "binary"
+        }
+      }
+    },
     {
       "version": "2025.09.14",
       "signer": {
@@ -25,8 +50,8 @@
         },
         "ots": {
           "path": "letter/ASI-Letter-v2025.09.14.md.asc.ots",
-          "size": 560,
-          "sha256": "b045ce90c44404eba582dc2011d48e9d3f00c46e3aed93dddfdb914a2e093ba4",
+          "size": 3633,
+          "sha256": "9bd07ff3060ce1033627050141ca7b43af8ff58062846620bc43ee73456d3574",
           "encoding": "binary"
         }
       }
