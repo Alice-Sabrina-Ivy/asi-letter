@@ -7,6 +7,7 @@ on:
   workflow_run:
     workflows:
       - ots-upgrade
+      - releases-manifest
     types:
       - completed
   workflow_dispatch: {}

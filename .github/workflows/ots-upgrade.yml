@@ -3,6 +3,11 @@ on:
   schedule:
     - cron: "23 * * * *"
   workflow_dispatch: {}
+  workflow_run:
+    workflows:
+      - releases-manifest
+    types:
+      - completed
 
 concurrency:
   group: letter-artifacts-${{ github.ref }}
@@ -14,6 +19,7 @@ permissions:
 
 jobs:
   upgrade-and-update:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
