@@ -8,8 +8,12 @@ if [[ -f "scripts/asi-public.asc" ]]; then
   gpg --batch --import "scripts/asi-public.asc" >/dev/null 2>&1 || true
 fi
 
-# Ensure expected key is present (set your full fingerprint here)
-FPR="2C101FA70F42F93052F82FC755387365B7949796"
+# Ensure expected key is present (read fingerprint from keys/FINGERPRINT)
+FPR=$(tr -cd '[:xdigit:]' < keys/FINGERPRINT | tr '[:lower:]' '[:upper:]')
+if [[ -z "$FPR" ]]; then
+  echo "Unable to determine fingerprint from keys/FINGERPRINT."
+  exit 1
+fi
 have_fprs="$(gpg --batch --with-colons --list-keys | awk -F: '/^fpr:/{print $10}')"
 if ! grep -q "$FPR" <<<"$have_fprs"; then
   echo "Public key with fingerprint $FPR not found in keyring."
