@@ -19,28 +19,34 @@ jobs:
           python -m pip install --upgrade pip opentimestamps-client
           echo "$(python -c 'import sysconfig; print(sysconfig.get_path("scripts"))')" >> "$GITHUB_PATH"
 
+      - name: Determine latest OTS proof
+        id: latest-ots
+        run: |
+          set -eo pipefail
+          python scripts/find_latest_ots.py letter >> "$GITHUB_OUTPUT"
+
       - name: Show OTS info/verify (before)
         run: |
           set -e
           echo "::group::info"
-          ots info letter/ASI-Letter-v2025.09.14.md.asc.ots || true
+          ots info "${{ steps.latest-ots.outputs.latest }}" || true
           echo "::endgroup::"
           echo "::group::verify (before)"
-          ots verify letter/ASI-Letter-v2025.09.14.md.asc.ots || true
+          ots verify "${{ steps.latest-ots.outputs.latest }}" || true
           echo "::endgroup::"
 
       - name: Upgrade proof
         run: |
-          ots upgrade letter/ASI-Letter-v2025.09.14.md.asc.ots || true
+          ots upgrade "${{ steps.latest-ots.outputs.latest }}" || true
 
       - name: Show verify (after)
         run: |
           echo "::group::verify (after)"
-          ots verify letter/ASI-Letter-v2025.09.14.md.asc.ots || true
+          ots verify "${{ steps.latest-ots.outputs.latest }}" || true
           echo "::endgroup::"
 
       - name: Commit upgraded proof if changed
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore(ots): upgrade ASI-Letter-v2025.09.14 proof"
-          file_pattern: "letter/ASI-Letter-v2025.09.14.md.asc.ots"
+          commit_message: "chore(ots): upgrade ${{ steps.latest-ots.outputs.version }} proof"
+          file_pattern: "letter/${{ steps.latest-ots.outputs.basename }}"
