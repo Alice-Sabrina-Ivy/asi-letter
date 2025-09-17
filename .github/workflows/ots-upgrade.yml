@@ -82,7 +82,7 @@ jobs:
                 gsub(/<p id="ots-line">.*<\/p>/,
                      "<p id=\"ots-line\">Bitcoin anchoring pending. Proof will update automatically.</p>", $0);
               }
-              print
+              printf "%s\n", $0
             }' "$HTML" > "$HTML.tmp"
           mv "$HTML.tmp" "$HTML"
 
