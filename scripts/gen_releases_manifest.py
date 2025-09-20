@@ -247,7 +247,9 @@ def _equivalent_without_updated(
 
 
 def main(argv: Iterable[str] | None = None) -> int:
-    args = parse_args(argv or sys.argv[1:])
+    if argv is None:
+        argv = sys.argv[1:]
+    args = parse_args(argv)
     base = repo_root(Path.cwd())
     try:
         manifest = build_manifest(base)

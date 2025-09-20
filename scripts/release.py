@@ -90,7 +90,9 @@ def run_stage(stage: Stage, base_dir: Path, check_mode: bool) -> None:
 
 
 def main(argv: Iterable[str] | None = None) -> int:
-    args = parse_args(argv or sys.argv[1:])
+    if argv is None:
+        argv = sys.argv[1:]
+    args = parse_args(argv)
     check_mode = bool(args.check or args.dry_run)
 
     repo_root = Path(__file__).resolve().parents[1]

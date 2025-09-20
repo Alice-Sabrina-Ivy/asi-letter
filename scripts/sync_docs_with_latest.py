@@ -98,7 +98,9 @@ def sync_latest(letter_dir: Path, docs_dir: Path, check_only: bool) -> bool:
 
 
 def main(argv: Iterable[str] | None = None) -> int:
-    args = parse_args(argv or sys.argv[1:])
+    if argv is None:
+        argv = sys.argv[1:]
+    args = parse_args(argv)
     letter_dir = args.letter_dir.resolve()
     docs_dir = args.docs_dir.resolve()
 
