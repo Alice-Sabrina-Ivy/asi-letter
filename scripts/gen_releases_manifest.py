@@ -3,8 +3,11 @@
 
 from __future__ import annotations
 
+import argparse
+import copy
 import datetime as dt
 import hashlib
+import json
 import os
 import re
 import subprocess
@@ -14,10 +17,30 @@ from typing import Any, Dict, Iterable, List, Optional
 
 
 RE_VERSION = re.compile(r"ASI-Letter-v(?P<ver>\d{4}\.\d{2}\.\d{2})\.md\Z")
+DEFAULT_OUTPUT = Path("letter/RELEASES.json")
 
 
 class ManifestError(RuntimeError):
     """Raised when manifest generation fails."""
+
+
+def parse_args(argv: Iterable[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=DEFAULT_OUTPUT,
+        help="Where to write the manifest (default: letter/RELEASES.json).",
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help=(
+            "Only verify whether the manifest is up to date; exit 1 if it "
+            "needs regeneration."
+        ),
+    )
+    return parser.parse_args(list(argv))
 
 
 def _run_git_rev_parse(start: Path) -> Optional[Path]:
@@ -195,23 +218,75 @@ def build_manifest(base: Path) -> Dict[str, Any]:
     }
 
 
-def write_manifest(manifest: Dict[str, Any], output_path: Path) -> None:
-    import json
+def load_existing_manifest(path: Path) -> Optional[Dict[str, Any]]:
+    if not path.exists():
+        return None
 
-    json_text = json.dumps(manifest, indent=2)
-    output_path.write_text(json_text, encoding="utf-8")
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except json.JSONDecodeError as exc:
+        raise ManifestError(f"Existing manifest is not valid JSON: {path}\n{exc}") from exc
+
+
+def strip_updated_field(manifest: Dict[str, Any]) -> Dict[str, Any]:
+    cleaned = copy.deepcopy(manifest)
+    cleaned.pop("updated", None)
+    return cleaned
+
+
+def serialize_manifest(manifest: Dict[str, Any]) -> str:
+    return json.dumps(manifest, indent=2)
+
+
+def write_manifest_text(manifest_text: str, output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(manifest_text, encoding="utf-8")
+
+
+def resolve_output_path(base: Path, output: Path) -> Path:
+    return output if output.is_absolute() else base / output
 
 
 def main(argv: Iterable[str] | None = None) -> int:
+    raw_args = argv or sys.argv[1:]
+    args = parse_args(raw_args)
+
     base = repo_root(Path.cwd())
+    output_path = resolve_output_path(base, args.output)
+
+    try:
+        existing_manifest = load_existing_manifest(output_path)
+    except ManifestError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
     try:
         manifest = build_manifest(base)
     except ManifestError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
-    output_path = base / "letter" / "RELEASES.json"
-    write_manifest(manifest, output_path)
+    if existing_manifest is not None:
+        if strip_updated_field(existing_manifest) == strip_updated_field(manifest):
+            if "updated" in existing_manifest:
+                manifest["updated"] = existing_manifest["updated"]
+
+    manifest_text = serialize_manifest(manifest)
+
+    if args.check:
+        if not output_path.exists():
+            rel = relativize(output_path, base)
+            print(f"{rel} is missing (regeneration required)")
+            return 1
+        current = output_path.read_text(encoding="utf-8")
+        if current != manifest_text:
+            rel = relativize(output_path, base)
+            print(f"{rel} is out of date (regeneration required)")
+            return 1
+        return 0
+
+    write_manifest_text(manifest_text, output_path)
     print(f"Wrote {relativize(output_path, base)}")
     return 0
 
