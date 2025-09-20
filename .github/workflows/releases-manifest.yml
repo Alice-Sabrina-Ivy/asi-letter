@@ -34,7 +34,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          branch="${GITHUB_REF##*/}"
+          branch="${GITHUB_REF_NAME:-${GITHUB_REF#refs/heads/}}"
+          if [[ -z "${branch}" ]]; then
+            echo "Unable to determine branch name from GITHUB_REF/GITHUB_REF_NAME" >&2
+            exit 1
+          fi
           git fetch origin "$branch"
           git pull --rebase --autostash origin "$branch"
       - name: Wait for GitHub Pages to be idle
