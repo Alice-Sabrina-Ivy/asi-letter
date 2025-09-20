@@ -3,8 +3,10 @@
 
 from __future__ import annotations
 
+import argparse
 import datetime as dt
 import hashlib
+import json
 import os
 import re
 import subprocess
@@ -195,14 +197,34 @@ def build_manifest(base: Path) -> Dict[str, Any]:
     }
 
 
-def write_manifest(manifest: Dict[str, Any], output_path: Path) -> None:
-    import json
+def render_manifest(manifest: Dict[str, Any]) -> str:
+    return json.dumps(manifest, indent=2)
 
-    json_text = json.dumps(manifest, indent=2)
-    output_path.write_text(json_text, encoding="utf-8")
+
+def normalize_for_comparison(manifest: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a shallow copy suitable for equality checks."""
+
+    normalized = dict(manifest)
+    normalized.pop("updated", None)
+    return normalized
+
+
+def write_manifest_text(text: str, output_path: Path) -> None:
+    output_path.write_text(text, encoding="utf-8")
+
+
+def parse_args(argv: Iterable[str] | None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Only check if the manifest is up to date; exit non-zero when regeneration is required.",
+    )
+    return parser.parse_args(list(argv) if argv is not None else None)
 
 
 def main(argv: Iterable[str] | None = None) -> int:
+    args = parse_args(argv)
     base = repo_root(Path.cwd())
     try:
         manifest = build_manifest(base)
@@ -211,7 +233,37 @@ def main(argv: Iterable[str] | None = None) -> int:
         return 1
 
     output_path = base / "letter" / "RELEASES.json"
-    write_manifest(manifest, output_path)
+    text = render_manifest(manifest)
+
+    if args.check:
+        if not output_path.exists():
+            print(f"Missing manifest: {relativize(output_path, base)}", file=sys.stderr)
+            return 1
+        current = output_path.read_text(encoding="utf-8")
+        try:
+            current_manifest = json.loads(current)
+        except json.JSONDecodeError:
+            print(
+                f"Existing manifest is not valid JSON: {relativize(output_path, base)}",
+                file=sys.stderr,
+            )
+            return 1
+        if not isinstance(current_manifest, dict):
+            print(
+                f"Existing manifest is not a JSON object: {relativize(output_path, base)}",
+                file=sys.stderr,
+            )
+            return 1
+        if normalize_for_comparison(current_manifest) != normalize_for_comparison(manifest):
+            print(
+                f"Manifest out of date: {relativize(output_path, base)} needs regeneration",
+                file=sys.stderr,
+            )
+            return 1
+        print(f"Manifest up to date: {relativize(output_path, base)}")
+        return 0
+
+    write_manifest_text(text, output_path)
     print(f"Wrote {relativize(output_path, base)}")
     return 0
 
