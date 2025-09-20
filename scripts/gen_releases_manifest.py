@@ -3,14 +3,16 @@
 
 from __future__ import annotations
 
+import argparse
 import datetime as dt
 import hashlib
+import json
 import os
 import re
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 
 RE_VERSION = re.compile(r"ASI-Letter-v(?P<ver>\d{4}\.\d{2}\.\d{2})\.md\Z")
@@ -18,6 +20,22 @@ RE_VERSION = re.compile(r"ASI-Letter-v(?P<ver>\d{4}\.\d{2}\.\d{2})\.md\Z")
 
 class ManifestError(RuntimeError):
     """Raised when manifest generation fails."""
+
+
+def parse_args(argv: Iterable[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Only verify whether RELEASES.json is current; exit 1 if regeneration is needed.",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("letter/RELEASES.json"),
+        help="Destination manifest path (default: letter/RELEASES.json).",
+    )
+    return parser.parse_args(list(argv))
 
 
 def _run_git_rev_parse(start: Path) -> Optional[Path]:
@@ -195,14 +213,43 @@ def build_manifest(base: Path) -> Dict[str, Any]:
     }
 
 
-def write_manifest(manifest: Dict[str, Any], output_path: Path) -> None:
-    import json
+def serialize_manifest(manifest: Dict[str, Any]) -> str:
+    return json.dumps(manifest, indent=2)
 
-    json_text = json.dumps(manifest, indent=2)
+
+def write_manifest(manifest: Dict[str, Any], output_path: Path) -> None:
+    json_text = serialize_manifest(manifest)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json_text, encoding="utf-8")
 
 
+def load_existing_manifest(path: Path) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None, None
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ManifestError(f"Existing manifest is invalid JSON: {path}\n{exc}") from exc
+    return data, text
+
+
+def _equivalent_without_updated(
+    proposed: Dict[str, Any],
+    existing: Dict[str, Any],
+) -> bool:
+    proposed_copy = dict(proposed)
+    existing_copy = dict(existing)
+    proposed_copy.pop("updated", None)
+    existing_copy.pop("updated", None)
+    return proposed_copy == existing_copy
+
+
 def main(argv: Iterable[str] | None = None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    args = parse_args(argv)
     base = repo_root(Path.cwd())
     try:
         manifest = build_manifest(base)
@@ -210,9 +257,38 @@ def main(argv: Iterable[str] | None = None) -> int:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
-    output_path = base / "letter" / "RELEASES.json"
+    output_path = args.output
+    if not output_path.is_absolute():
+        output_path = base / output_path
+
+    try:
+        existing_manifest, existing_text = load_existing_manifest(output_path)
+    except ManifestError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+    if existing_manifest is not None and _equivalent_without_updated(manifest, existing_manifest):
+        manifest["updated"] = existing_manifest.get("updated", manifest["updated"])
+
+    new_text = serialize_manifest(manifest)
+    rel_path = relativize(output_path, base)
+
+    if args.check:
+        if existing_text is None:
+            print(f"{rel_path} is missing and must be generated", file=sys.stderr)
+            return 1
+        if existing_text != new_text:
+            print(f"{rel_path} is out of date", file=sys.stderr)
+            return 1
+        print(f"{rel_path} is up to date")
+        return 0
+
+    if existing_text == new_text:
+        print(f"{rel_path} is already current")
+        return 0
+
     write_manifest(manifest, output_path)
-    print(f"Wrote {relativize(output_path, base)}")
+    print(f"Wrote {rel_path}")
     return 0
 
 
