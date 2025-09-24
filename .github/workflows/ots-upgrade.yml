@@ -9,8 +9,10 @@ on:
     types:
       - completed
   push:
+    branches:
+      - main
     paths:
-      - "docs/letter.md.asc"
+      - "docs/letter.md"
       - "docs/index.html"
 
 concurrency:
@@ -22,31 +24,163 @@ permissions:
   actions: read
 
 jobs:
+  precheck:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.decision.outputs.should_run }}
+    steps:
+      - name: Determine whether scheduled run should proceed
+        id: decision
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          REF: ${{ github.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
+          REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          import base64
+          import html
+          import json
+          import os
+          import re
+          import sys
+          import urllib.parse
+          import urllib.request
+
+          event_name = os.environ.get('EVENT_NAME', '')
+          gh_output = os.environ.get('GITHUB_OUTPUT')
+          if not gh_output:
+              raise SystemExit('GITHUB_OUTPUT is not set')
+
+          token = os.environ.get('GITHUB_TOKEN', '')
+
+          def detect_block(document):
+              if not document:
+                  return None
+
+              normalized = html.unescape(document)
+              normalized = normalized.replace('\r', ' ')
+
+              patterns = [
+                  re.compile(r'Bitcoin\s+block[^<]*<strong>\s*#?([\d,]+)', re.IGNORECASE),
+                  re.compile(r'blockheight[^<]*<strong>\s*#?([\d,]+)', re.IGNORECASE),
+                  re.compile(r'BitcoinBlockHeaderAttestation\((\d+)\)', re.IGNORECASE),
+              ]
+
+              for pattern in patterns:
+                  match = pattern.search(normalized)
+                  if match:
+                      digits = re.sub(r'\D', '', match.group(1))
+                      if digits:
+                          return digits
+              return None
+
+          with open(gh_output, 'a', encoding='utf-8') as out:
+              if event_name != 'schedule':
+                  print(f"Event '{event_name}' is not schedule; proceeding.")
+                  print('should_run=true', file=out)
+                  raise SystemExit(0)
+
+              ref_name = os.environ.get('REF_NAME') or ''
+              if not ref_name:
+                  ref = os.environ.get('REF', '')
+                  if ref.startswith('refs/heads/'):
+                      ref_name = ref.split('/', 2)[2]
+              if not ref_name:
+                  ref_name = os.environ.get('DEFAULT_BRANCH', 'main') or 'main'
+
+              repository = os.environ.get('REPOSITORY')
+              if not repository:
+                  print('Missing repository context; proceeding.', file=sys.stderr)
+                  print('should_run=true', file=out)
+                  raise SystemExit(0)
+
+              url = f"https://raw.githubusercontent.com/{repository}/{ref_name}/docs/index.html"
+              print(f"Fetching {url}")
+
+              headers = {
+                  'User-Agent': 'asi-letter-ots-precheck',
+                  'Cache-Control': 'no-cache',
+                  'Pragma': 'no-cache',
+              }
+              if token:
+                  headers['Authorization'] = f'Bearer {token}'
+
+              raw_request = urllib.request.Request(url, headers=headers)
+
+              document = None
+              try:
+                  with urllib.request.urlopen(raw_request, timeout=30) as resp:
+                      encoding = resp.headers.get_content_charset() or 'utf-8'
+                      document = resp.read().decode(encoding, 'replace')
+              except Exception as exc:
+                  print(f"Raw download failed: {exc}", file=sys.stderr)
+
+              # Fall back to the contents API when the raw download is unavailable.
+              if document is None and token:
+                  api_url = "https://api.github.com/repos/{repo}/contents/docs/index.html?ref={ref}".format(
+                      repo=repository,
+                      ref=urllib.parse.quote(ref_name, safe=''),
+                  )
+                  api_request = urllib.request.Request(
+                      api_url,
+                      headers={
+                          'User-Agent': 'asi-letter-ots-precheck',
+                          'Authorization': f'Bearer {token}',
+                          'Accept': 'application/vnd.github+json',
+                      },
+                  )
+                  try:
+                      with urllib.request.urlopen(api_request, timeout=30) as resp:
+                          payload = resp.read().decode('utf-8', 'replace')
+                          data = json.loads(payload)
+                      if isinstance(data, dict) and data.get('type') == 'file':
+                          content = data.get('content')
+                          encoding = (data.get('encoding') or 'base64').lower()
+                          if isinstance(content, str):
+                              document = None
+                              if encoding == 'base64':
+                                  try:
+                                      document = base64.b64decode(content).decode('utf-8', 'replace')
+                                  except Exception as exc:
+                                      print(
+                                          f"Unable to decode docs/index.html from API response ({encoding}): {exc}",
+                                          file=sys.stderr,
+                                      )
+                              if document is None:
+                                  document = content
+                          else:
+                              print('docs/index.html content missing or not string in API response; proceeding.', file=sys.stderr)
+                      else:
+                          print('docs/index.html not returned as file content via API; proceeding.', file=sys.stderr)
+                  except Exception as exc:
+                      print(f"Contents API fallback failed: {exc}", file=sys.stderr)
+
+              if document:
+                  block_digits = detect_block(document)
+                  if block_digits:
+                      print(
+                          f"Detected finalized Bitcoin block in docs/index.html (height {block_digits}); skipping scheduled run."
+                      )
+                      print('should_run=false', file=out)
+                      raise SystemExit(0)
+
+              print('No finalized Bitcoin block detected; proceeding.')
+              print('should_run=true', file=out)
+          PY
+
   upgrade-and-update:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    needs: precheck
+    if: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && needs.precheck.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Detect prior Bitcoin attestation for scheduled runs
-        id: maybe_skip
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          set -euo pipefail
-
-          SHOULD_SKIP="false"
-          if [[ "$EVENT_NAME" == "schedule" ]]; then
-            if [[ -f docs/index.html ]] && grep -Eq 'Bitcoin block <strong>[0-9]+' docs/index.html; then
-              echo "Scheduled run detected an existing Bitcoin block attestation in docs/index.html; skipping upgrade."
-              SHOULD_SKIP="true"
-            fi
-          fi
-
-          printf 'should_skip=%s\n' "$SHOULD_SKIP" >> "$GITHUB_OUTPUT"
-
       - name: Install OpenTimestamps client + alt verifier
-        if: steps.maybe_skip.outputs.should_skip != 'true'
         run: |
           python -m pip install --upgrade opentimestamps-client
           wget -q https://go.dev/dl/go1.22.5.linux-amd64.tar.gz
@@ -59,7 +193,6 @@ jobs:
 
       - name: Prepare proof + determine footer status
         id: status
-        if: steps.maybe_skip.outputs.should_skip != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -119,7 +252,6 @@ jobs:
           printf 'status_line=%s\n' "$STATUS_SANITIZED" >> "$GITHUB_OUTPUT"
 
       - name: Ensure footer (scriptless, centered)
-        if: steps.maybe_skip.outputs.should_skip != 'true'
         shell: bash
         env:
           STATUS_LINE: ${{ steps.status.outputs.status_line }}
@@ -144,22 +276,30 @@ jobs:
           } >> "$HTML"
 
       - name: Rebase onto latest ${{ github.ref_name }} before committing
-        if: steps.maybe_skip.outputs.should_skip != 'true'
         shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
         run: |
           set -euo pipefail
+
           branch="${GITHUB_REF##*/}"
-          git fetch origin "$branch"
-          git pull --rebase --autostash origin "$branch"
+          if [[ -z "$branch" || "$branch" == "$GITHUB_REF" ]]; then
+            branch="${DEFAULT_BRANCH:-main}"
+          fi
+
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            git fetch origin "$branch"
+            git pull --rebase --autostash origin "$branch"
+          else
+            echo "Branch '$branch' not published on origin; skipping rebase."
+          fi
 
       - name: Wait for GitHub Pages to be idle
-        if: steps.maybe_skip.outputs.should_skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: .github/scripts/wait_for_pages_idle.sh
 
       - uses: stefanzweifel/git-auto-commit-action@v5
-        if: steps.maybe_skip.outputs.should_skip != 'true'
         with:
           commit_message: "chore(ots): upgrade proof + refresh status [ots-upgrade-auto]"
           file_pattern: docs/index.html
