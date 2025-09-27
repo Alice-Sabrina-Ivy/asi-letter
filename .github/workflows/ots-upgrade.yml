@@ -260,9 +260,48 @@ jobs:
           STATUS="Bitcoin anchoring pending. Proof will update automatically."
           TARGET=""
 
-          if ls letter/*.asc 1>/dev/null 2>&1; then
-            TARGET="$(ls -t letter/*.asc | head -n1)"
-          elif [[ -f docs/letter.md.asc ]]; then
+          if [[ -f letter/RELEASES.json ]]; then
+            TARGET="$(python - <<'PY'
+import json
+from pathlib import Path
+
+
+def main() -> None:
+    try:
+        with Path('letter/RELEASES.json').open('r', encoding='utf-8') as fh:
+            payload = json.load(fh)
+    except Exception:
+        return
+
+    releases = payload.get('releases') or []
+    if not releases:
+        return
+
+    latest = releases[0] or {}
+    path = (
+        (latest.get('files') or {})
+        .get('asc')
+        or {}
+    ).get('path')
+    if not path:
+        return
+
+    resolved = Path(path)
+    if resolved.is_file():
+        print(resolved.as_posix())
+
+
+if __name__ == '__main__':
+    main()
+PY
+)"
+          fi
+
+          if [[ -z "$TARGET" ]] && ls letter/*.asc 1>/dev/null 2>&1; then
+            TARGET="$(ls letter/*.asc | sort | tail -n1)"
+          fi
+
+          if [[ -z "$TARGET" ]] && [[ -f docs/letter.md.asc ]]; then
             TARGET="docs/letter.md.asc"
           fi
 
