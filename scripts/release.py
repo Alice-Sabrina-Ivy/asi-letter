@@ -14,7 +14,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 
 @dataclass(frozen=True)
@@ -89,7 +89,7 @@ def run_stage(stage: Stage, base_dir: Path, check_mode: bool) -> None:
     subprocess.run(cmd, check=True, cwd=base_dir)
 
 
-def main(argv: Iterable[str] | None = None) -> int:
+def main(argv: Optional[Iterable[str]] = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
     args = parse_args(argv)

@@ -7,7 +7,7 @@ import argparse
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -40,7 +40,7 @@ def parse_args(argv: Iterable[str]) -> argparse.Namespace:
     return parser.parse_args(list(argv))
 
 
-def _parse_version(path: Path) -> Tuple[int, int, int] | None:
+def _parse_version(path: Path) -> Optional[Tuple[int, int, int]]:
     name = path.name
     if not name.startswith("ASI-Letter-v") or not name.endswith(".md"):
         return None
@@ -55,7 +55,7 @@ def _parse_version(path: Path) -> Tuple[int, int, int] | None:
 
 
 def discover_latest(letter_dir: Path) -> LetterRelease:
-    candidates: list[LetterRelease] = []
+    candidates: List[LetterRelease] = []
     for md_path in letter_dir.glob("ASI-Letter-v*.md"):
         version = _parse_version(md_path)
         if version is None:
@@ -97,7 +97,7 @@ def sync_latest(letter_dir: Path, docs_dir: Path, check_only: bool) -> bool:
     return _sync(release.source_md, md_dest)
 
 
-def main(argv: Iterable[str] | None = None) -> int:
+def main(argv: Optional[Iterable[str]] = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
     args = parse_args(argv)

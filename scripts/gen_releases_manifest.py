@@ -246,7 +246,7 @@ def _equivalent_without_updated(
     return proposed_copy == existing_copy
 
 
-def main(argv: Iterable[str] | None = None) -> int:
+def main(argv: Optional[Iterable[str]] = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
     args = parse_args(argv)
