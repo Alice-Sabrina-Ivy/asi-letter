@@ -266,39 +266,43 @@ jobs:
           if [[ -f letter/RELEASES.json ]]; then
             TARGET="$(
               python - <<'PY'
-              import json
-              from pathlib import Path
+import json
+from pathlib import Path
 
 
-              def main() -> None:
-                  try:
-                      with Path('letter/RELEASES.json').open('r', encoding='utf-8') as fh:
-                          payload = json.load(fh)
-                  except Exception:
-                      return
+def main() -> None:
+    try:
+        with Path('letter/RELEASES.json').open('r', encoding='utf-8') as fh:
+            payload = json.load(fh)
+    except Exception:
+        return
 
-                  releases = payload.get('releases') or []
-                  if not releases:
-                      return
+    releases = payload.get('releases') or []
+    if not releases:
+        return
 
-                  latest = releases[0] or {}
-                  path = (
-                      (latest.get('files') or {})
-                      .get('asc')
-                      or {}
-                  ).get('path')
-                  if not path:
-                      return
+    latest = releases[0] or {}
+    path = (
+        (latest.get('files') or {})
+        .get('asc')
+        or {}
+    ).get('path')
+    if not path:
+        return
 
-                  resolved = Path(path)
-                  if resolved.is_file():
-                      print(resolved.as_posix())
+    resolved = Path(path)
+    if resolved.is_file():
+        print(resolved.as_posix())
 
 
-              if __name__ == '__main__':
-                  main()
+if __name__ == '__main__':
+    main()
               PY
             )"
+          fi
+
+          if [[ -n "$TARGET" ]]; then
+            TARGET="$(printf '%s' "$TARGET" | tr -d '\r')"
           fi
 
           if [[ -z "$TARGET" ]] && ls letter/*.asc 1>/dev/null 2>&1; then
@@ -309,54 +313,81 @@ jobs:
             TARGET="docs/letter.md.asc"
           fi
 
+          OTS_CLI="$(command -v ots 2>/dev/null || true)"
+          ALT_CLI="$HOME/go/bin/ots"
+
           if [[ -n "$TARGET" ]]; then
             echo "Using TARGET='$TARGET'"
-            if [[ ! -f "${TARGET}.ots" ]]; then
-              echo "No .ots present; stamping"
-              if ots stamp "$TARGET"; then
-                echo "Stamp completed"
+
+            if [[ -n "$OTS_CLI" ]]; then
+              if [[ ! -f "${TARGET}.ots" ]]; then
+                echo "No .ots present; stamping"
+                if "$OTS_CLI" stamp "$TARGET"; then
+                  echo "Stamp completed"
+                else
+                  echo "Warning: ots stamp failed; continuing without a freshly stamped proof" >&2
+                fi
               else
-                echo "Warning: ots stamp failed; continuing without a freshly stamped proof" >&2
+                echo "Found ${TARGET}.ots; skipping stamp."
               fi
+
+              "$OTS_CLI" upgrade "${TARGET}.ots" || true
             else
-              echo "Found ${TARGET}.ots; skipping stamp."
+              echo "Warning: ots CLI unavailable; skipping stamp/upgrade steps" >&2
             fi
 
-            ots upgrade "${TARGET}.ots" || true
-
             if [[ -f "${TARGET}.ots" ]]; then
-              git add "${TARGET}.ots"
-
-              cp "${TARGET}.ots" /tmp/proof.ots
-              ots upgrade /tmp/proof.ots || true
-
-              HEIGHT=""
-              if PY_OUT="$(python .github/scripts/extract_block_height.py /tmp/proof.ots)"; then
-                HEIGHT="${PY_OUT//$'\n'/}"
-                HEIGHT="${HEIGHT//$'\r'/}"
+              if ! git add "${TARGET}.ots" 2>/tmp/git-add.log; then
+                echo "Warning: unable to stage ${TARGET}.ots" >&2
+                cat /tmp/git-add.log >&2 || true
               fi
+              rm -f /tmp/git-add.log || true
 
-              if [[ -z "$HEIGHT" ]]; then
-                set +e
-                OUT="$(ots verify /tmp/proof.ots 2>&1)"
-                ALT="$("$HOME/go/bin/ots" verify /tmp/proof.ots 2>&1)"
-                INFO="$(ots info /tmp/proof.ots 2>&1)"
-                OUT="$OUT"$'\n'"$ALT"$'\n'"$INFO"
-                set -e
-                HEIGHT="$(echo "$OUT" |
-                  grep -Eo 'block[[:space:]]*#?[0-9]+|blockheight[[:space:]]*#?[0-9]+|BitcoinBlockHeaderAttestation\([0-9]+\)' |
-                  grep -Eo '[0-9]+' |
-                  tail -n1 || true)"
-              fi
+              if cp "${TARGET}.ots" /tmp/proof.ots; then
+                [[ -n "$OTS_CLI" ]] && "$OTS_CLI" upgrade /tmp/proof.ots || true
 
-              if [[ -n "$HEIGHT" ]]; then
-                STATUS="Bitcoin block <strong>${HEIGHT}</strong> attests the letter existed prior to that block."
+                HEIGHT=""
+                PY_OUT="$(python .github/scripts/extract_block_height.py /tmp/proof.ots 2>/dev/null || true)"
+                PY_OUT="${PY_OUT//$'\r'/}"
+                PY_OUT="${PY_OUT//$'\n'/}"
+                if [[ -n "$PY_OUT" ]]; then
+                  HEIGHT="$PY_OUT"
+                fi
+
+                if [[ -z "$HEIGHT" ]]; then
+                  OUT=""
+                  ALT_OUT=""
+                  INFO_OUT=""
+                  if [[ -n "$OTS_CLI" ]]; then
+                    OUT="$("$OTS_CLI" verify /tmp/proof.ots 2>&1 || true)"
+                    INFO_OUT="$("$OTS_CLI" info /tmp/proof.ots 2>&1 || true)"
+                  fi
+                  if [[ -x "$ALT_CLI" ]]; then
+                    ALT_OUT="$("$ALT_CLI" verify /tmp/proof.ots 2>&1 || true)"
+                  fi
+
+                  COMBINED="$OUT"$'\n'"$ALT_OUT"$'\n'"$INFO_OUT"
+                  HEIGHT="$(printf '%s\n' "$COMBINED" |
+                    grep -Eo 'block[[:space:]]*#?[0-9]+|blockheight[[:space:]]*#?[0-9]+|BitcoinBlockHeaderAttestation\([0-9]+\)' |
+                    grep -Eo '[0-9]+' |
+                    tail -n1 || true)"
+                fi
+
+                if [[ -n "$HEIGHT" ]]; then
+                  STATUS="Bitcoin block <strong>${HEIGHT}</strong> attests the letter existed prior to that block."
+                fi
+              else
+                echo "Warning: unable to copy ${TARGET}.ots for inspection" >&2
               fi
             fi
           fi
 
           STATUS_SANITIZED="$(printf '%s' "$STATUS" | tr '\n' ' ' | tr -d '\r')"
-          printf 'status_line=%s\n' "$STATUS_SANITIZED" >> "$GITHUB_OUTPUT"
+          if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+            printf 'status_line=%s\n' "$STATUS_SANITIZED" >> "$GITHUB_OUTPUT"
+          else
+            printf 'status_line=%s\n' "$STATUS_SANITIZED"
+          fi
 
       - name: Ensure footer (scriptless, centered)
         shell: bash
