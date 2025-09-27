@@ -264,41 +264,7 @@ jobs:
           TARGET=""
 
           if [[ -f letter/RELEASES.json ]]; then
-            TARGET="$(
-              python - <<'PY'
-              import json
-              from pathlib import Path
-
-
-              def main() -> None:
-                  try:
-                      with Path('letter/RELEASES.json').open('r', encoding='utf-8') as fh:
-                          payload = json.load(fh)
-                  except Exception:
-                      return
-
-                  releases = payload.get('releases') or []
-                  if not releases:
-                      return
-
-                  latest = releases[0] or {}
-                  path = (
-                      (latest.get('files') or {})
-                      .get('asc')
-                      or {}
-                  ).get('path')
-                  if not path:
-                      return
-
-                  resolved = Path(path)
-                  if resolved.is_file():
-                      print(resolved.as_posix())
-
-
-              if __name__ == '__main__':
-                  main()
-              PY
-            )"
+            TARGET="$(python .github/scripts/get_latest_letter_asc.py 2>/dev/null || true)"
           fi
 
           if [[ -n "$TARGET" ]]; then
