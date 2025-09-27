@@ -266,37 +266,37 @@ jobs:
           if [[ -f letter/RELEASES.json ]]; then
             TARGET="$(
               python - <<'PY'
-import json
-from pathlib import Path
+              import json
+              from pathlib import Path
 
 
-def main() -> None:
-    try:
-        with Path('letter/RELEASES.json').open('r', encoding='utf-8') as fh:
-            payload = json.load(fh)
-    except Exception:
-        return
+              def main() -> None:
+                  try:
+                      with Path('letter/RELEASES.json').open('r', encoding='utf-8') as fh:
+                          payload = json.load(fh)
+                  except Exception:
+                      return
 
-    releases = payload.get('releases') or []
-    if not releases:
-        return
+                  releases = payload.get('releases') or []
+                  if not releases:
+                      return
 
-    latest = releases[0] or {}
-    path = (
-        (latest.get('files') or {})
-        .get('asc')
-        or {}
-    ).get('path')
-    if not path:
-        return
+                  latest = releases[0] or {}
+                  path = (
+                      (latest.get('files') or {})
+                      .get('asc')
+                      or {}
+                  ).get('path')
+                  if not path:
+                      return
 
-    resolved = Path(path)
-    if resolved.is_file():
-        print(resolved.as_posix())
+                  resolved = Path(path)
+                  if resolved.is_file():
+                      print(resolved.as_posix())
 
 
-if __name__ == '__main__':
-    main()
+              if __name__ == '__main__':
+                  main()
               PY
             )"
           fi
