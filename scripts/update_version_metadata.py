@@ -5,8 +5,7 @@ This script reads ``letter/RELEASES.json`` to locate the most recent release
 and then updates known metadata placeholders (page title, data attributes,
 comments, etc.) so they always reflect the latest signed version. Run this
 before publishing the static site to avoid drift between the manifest and the
-rendered HTML.
-"""
+rendered HTML."""
 from __future__ import annotations
 
 import argparse
