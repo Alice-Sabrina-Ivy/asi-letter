@@ -313,7 +313,11 @@ jobs:
             echo "Using TARGET='$TARGET'"
             if [[ ! -f "${TARGET}.ots" ]]; then
               echo "No .ots present; stamping"
-              ots stamp "$TARGET"
+              if ots stamp "$TARGET"; then
+                echo "Stamp completed"
+              else
+                echo "Warning: ots stamp failed; continuing without a freshly stamped proof" >&2
+              fi
             else
               echo "Found ${TARGET}.ots; skipping stamp."
             fi
