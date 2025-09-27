@@ -394,5 +394,8 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore(ots): upgrade proof + refresh status [ots-upgrade-auto]"
-          file_pattern: docs/index.html
+          file_pattern: |
+            docs/index.html
+            letter/*.ots
+            docs/*.ots
 
