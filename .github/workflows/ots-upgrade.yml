@@ -52,7 +52,6 @@ jobs:
           import re
           import subprocess
           import sys
-          from typing import Optional
           from urllib.error import URLError, HTTPError
           from urllib.request import urlopen
           
@@ -75,7 +74,7 @@ jobs:
               return branch
           
           
-          def fetch_text(url: str) -> Optional[str]:
+          def fetch_text(url: str) -> str | None:
               log(f"Fetching {url} ...")
               try:
                   with urlopen(url) as resp:
@@ -85,7 +84,7 @@ jobs:
                   return None
           
           
-          def fetch_bytes(url: str) -> Optional[bytes]:
+          def fetch_bytes(url: str) -> bytes | None:
               log(f"Fetching {url} (binary) ...")
               try:
                   with urlopen(url) as resp:
