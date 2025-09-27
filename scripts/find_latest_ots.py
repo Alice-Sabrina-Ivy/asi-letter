@@ -7,7 +7,7 @@ import argparse
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List
+from typing import Iterable, List, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -26,12 +26,12 @@ def _candidate_files(directory: Path) -> Iterable[Path]:
             yield entry
 
 
-def _sort_key(path: Path) -> tuple[float, str]:
+def _sort_key(path: Path) -> Tuple[float, str]:
     stat = path.stat()
     return stat.st_mtime, path.name
 
 
-def _derive_version_components(path: Path) -> tuple[str, str, str]:
+def _derive_version_components(path: Path) -> Tuple[str, str, str]:
     basename = path.name
     noext = basename[: -len(path.suffix)] if path.suffix else basename
     version = noext
@@ -62,7 +62,7 @@ def find_latest_ots(directory: Path) -> LatestOts:
     return LatestOts(path=latest.resolve(), basename=basename, noext=noext, version=version)
 
 
-def _format_outputs(latest: LatestOts, *, base_dir: Path | None = None) -> List[str]:
+def _format_outputs(latest: LatestOts, *, base_dir: Optional[Path] = None) -> List[str]:
     cwd = base_dir or Path.cwd()
     try:
         rel_path = latest.path.relative_to(cwd)
@@ -77,7 +77,7 @@ def _format_outputs(latest: LatestOts, *, base_dir: Path | None = None) -> List[
     ]
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "directory",
