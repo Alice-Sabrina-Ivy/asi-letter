@@ -74,7 +74,10 @@ jobs:
               return branch
           
           
-          def fetch_text(url: str) -> str | None:
+          from typing import Optional
+
+
+          def fetch_text(url: str) -> Optional[str]:
               log(f"Fetching {url} ...")
               try:
                   with urlopen(url) as resp:
@@ -84,7 +87,7 @@ jobs:
                   return None
           
           
-          def fetch_bytes(url: str) -> bytes | None:
+          def fetch_bytes(url: str) -> Optional[bytes]:
               log(f"Fetching {url} (binary) ...")
               try:
                   with urlopen(url) as resp:
