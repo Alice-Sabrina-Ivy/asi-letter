@@ -1,11 +1,8 @@
 name: ots-upgrade
 on:
-  workflow_dispatch:
-    inputs:
-      force:
-        description: "Set to true to override the finalization guard"
-        required: false
-        default: "false"
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
   workflow_run:
     workflows:
       - releases-manifest
@@ -26,6 +23,7 @@ permissions:
 
 jobs:
   precheck:
+    if: ${{ github.event_name != 'schedule' || vars.OTS_UPGRADE_CRON_ENABLED != 'false' }}
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.decision.outputs.should_run }}
@@ -40,18 +38,220 @@ jobs:
           REF: ${{ github.ref }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           REPOSITORY: ${{ github.repository }}
-          FORCE: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.force == 'true') && 'true' || 'false' }}
         run: |
           set -euo pipefail
 
-          python .github/scripts/check_letter_finalization.py \
-            --event-name "$EVENT_NAME" \
-            --repository "$REPOSITORY" \
-            --ref-name "$REF_NAME" \
-            --ref "$REF" \
-            --default-branch "$DEFAULT_BRANCH" \
-            --force "$FORCE" \
-            --github-output "${GITHUB_OUTPUT:-}"
+          python - <<'PY'
+          import io
+          import json
+          import os
+          import re
+          import subprocess
+          import sys
+          from urllib.error import URLError, HTTPError
+          from urllib.request import urlopen
+          
+          
+          def log(msg: str) -> None:
+              print(msg)
+          
+          
+          def determine_branch() -> str:
+              branch = os.environ.get("REF_NAME")
+              ref = os.environ.get("REF", "")
+              default = os.environ.get("DEFAULT_BRANCH")
+          
+              if not branch and ref.startswith("refs/heads/"):
+                  branch = ref.split("/", 2)[-1]
+              if not branch and default:
+                  branch = default
+              if not branch:
+                  branch = "main"
+              return branch
+          
+          
+          from typing import Optional
+
+
+          def fetch_text(url: str) -> Optional[str]:
+              log(f"Fetching {url} ...")
+              try:
+                  with urlopen(url) as resp:
+                      return resp.read().decode("utf-8", "replace")
+              except (URLError, HTTPError) as exc:
+                  log(f"Failed to fetch {url}: {exc}")
+                  return None
+          
+          
+          def fetch_bytes(url: str) -> Optional[bytes]:
+              log(f"Fetching {url} (binary) ...")
+              try:
+                  with urlopen(url) as resp:
+                      return resp.read()
+              except (URLError, HTTPError) as exc:
+                  log(f"Failed to fetch {url}: {exc}")
+                  return None
+          
+          
+          def ensure_opentimestamps() -> bool:
+              try:
+                  import opentimestamps  # type: ignore  # noqa: F401
+                  return True
+              except ImportError:
+                  log("Installing opentimestamps-client for block height extraction ...")
+                  try:
+                      subprocess.run(
+                          [sys.executable, "-m", "pip", "install", "--quiet", "opentimestamps-client"],
+                          check=True,
+                          stdout=subprocess.DEVNULL,
+                          stderr=subprocess.DEVNULL,
+                      )
+                  except Exception as exc:  # pragma: no cover - best-effort installer
+                      log(f"pip install failed: {exc}")
+                      return False
+              try:
+                  import opentimestamps  # type: ignore  # noqa: F401
+                  return True
+              except ImportError:
+                  log("Unable to import opentimestamps after installation attempt.")
+                  return False
+          
+          
+          def extract_ots_height(data: bytes) -> str:
+              if not data:
+                  return ""
+              if not ensure_opentimestamps():
+                  return ""
+              try:
+                  from opentimestamps.core.serialize import StreamDeserializationContext
+                  from opentimestamps.core.timestamp import DetachedTimestampFile
+                  from opentimestamps.core.notary import BitcoinBlockHeaderAttestation
+              except Exception as exc:  # pragma: no cover - depends on package internals
+                  log(f"Unable to import OpenTimestamps parser: {exc}")
+                  return ""
+          
+              try:
+                  ctx = StreamDeserializationContext(io.BytesIO(data))
+                  timestamp = DetachedTimestampFile.deserialize(ctx).timestamp
+              except Exception as exc:  # pragma: no cover - invalid proof
+                  log(f"Failed to parse OTS proof: {exc}")
+                  return ""
+          
+              heights = sorted({
+                  att.height
+                  for _path, att in timestamp.all_attestations()
+                  if isinstance(att, BitcoinBlockHeaderAttestation)
+              })
+              if not heights:
+                  return ""
+              return str(heights[-1])
+          
+          
+          def write_output(name: str, value: str) -> None:
+              out_path = os.environ.get("GITHUB_OUTPUT")
+              if not out_path:
+                  return
+              with open(out_path, "a", encoding="utf-8") as fh:
+                  fh.write(f"{name}={value}\n")
+
+
+          def main() -> int:
+              event_name = os.environ.get("EVENT_NAME", "")
+              cron_state = "none"
+              if event_name == "workflow_dispatch":
+                  log("Manual dispatch requested; allowing workflow to proceed.")
+                  write_output("should_run", "true")
+                  write_output("cron_state", cron_state)
+                  return 0
+
+              repository = os.environ["REPOSITORY"]
+              branch = determine_branch()
+
+              base = f"https://raw.githubusercontent.com/{repository}/{branch}"
+
+              if event_name in {"push", "workflow_run"}:
+                  log("Detected content update event; ensuring cron schedule is enabled.")
+                  cron_state = "enable"
+
+              index_html = fetch_text(f"{base}/docs/index.html")
+              if index_html is None:
+                  log("Unable to inspect docs/index.html; allowing workflow to proceed.")
+                  write_output("should_run", "true")
+                  write_output("cron_state", cron_state)
+                  return 0
+          
+              version_match = re.search(r"<!--\s*release-version:\s*v?([0-9][0-9.]+)\s*-->", index_html)
+              index_version = version_match.group(1) if version_match else ""
+              height_match = re.search(r"Bitcoin block <strong>([0-9]+)</strong>", index_html)
+              index_height = height_match.group(1) if height_match else ""
+          
+              releases_raw = fetch_text(f"{base}/letter/RELEASES.json")
+              if releases_raw is None:
+                  log("Unable to inspect RELEASES.json; allowing workflow to proceed.")
+                  write_output("should_run", "true")
+                  write_output("cron_state", cron_state)
+                  return 0
+          
+              try:
+                  releases = json.loads(releases_raw)
+              except json.JSONDecodeError as exc:
+                  log(f"Failed to parse RELEASES.json: {exc}")
+                  write_output("should_run", "true")
+                  write_output("cron_state", cron_state)
+                  return 0
+          
+              release_entry = None
+              releases_list = releases.get("releases") or []
+              if index_version:
+                  for candidate in releases_list:
+                      if candidate.get("version") == index_version:
+                          release_entry = candidate
+                          break
+              if release_entry is None and releases_list:
+                  release_entry = releases_list[0]
+          
+              if release_entry is None:
+                  log("No releases found; allowing workflow to proceed.")
+                  write_output("should_run", "true")
+                  write_output("cron_state", cron_state)
+                  return 0
+          
+              ots_path = (
+                  release_entry.get("files", {})
+                  .get("ots", {})
+                  .get("path")
+              )
+              if not ots_path:
+                  log("Latest release lacks an OTS proof path; allowing workflow to proceed.")
+                  write_output("should_run", "true")
+                  write_output("cron_state", cron_state)
+                  return 0
+          
+              ots_bytes = fetch_bytes(f"{base}/{ots_path}")
+              ots_height = extract_ots_height(ots_bytes or b"")
+          
+              if ots_height and index_height == ots_height:
+                  log(
+                      f"Detected finalized Bitcoin block {index_height} for current letter; skipping event '{event_name or 'unknown'}'."
+                  )
+                  if event_name == "schedule":
+                      cron_state = "disable"
+                  write_output("should_run", "false")
+                  write_output("cron_state", cron_state)
+                  return 0
+
+              log(
+                  "Proof not yet finalized for current letter (index height: "
+                  f"{index_height or 'n/a'}, proof height: {ots_height or 'n/a'}); proceeding."
+              )
+              write_output("should_run", "true")
+              write_output("cron_state", cron_state)
+              return 0
+          
+          
+          if __name__ == "__main__":
+              sys.exit(main())
+          PY
 
   manage-cron-flag:
     needs: precheck
@@ -248,3 +448,4 @@ jobs:
             docs/index.html
             letter/*.ots
             docs/*.ots
+
