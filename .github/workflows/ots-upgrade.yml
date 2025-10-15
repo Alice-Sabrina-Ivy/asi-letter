@@ -42,11 +42,9 @@ jobs:
           set -euo pipefail
 
           python - <<'PY'
-          import io
           import json
           import os
           import re
-          import subprocess
           import sys
           from urllib.error import URLError, HTTPError
           from urllib.request import urlopen
@@ -91,60 +89,6 @@ jobs:
               except (URLError, HTTPError) as exc:
                   log(f"Failed to fetch {url}: {exc}")
                   return None
-          
-          
-          def ensure_opentimestamps() -> bool:
-              try:
-                  import opentimestamps  # type: ignore  # noqa: F401
-                  return True
-              except ImportError:
-                  log("Installing opentimestamps-client for block height extraction ...")
-                  try:
-                      subprocess.run(
-                          [sys.executable, "-m", "pip", "install", "--quiet", "opentimestamps-client"],
-                          check=True,
-                          stdout=subprocess.DEVNULL,
-                          stderr=subprocess.DEVNULL,
-                      )
-                  except Exception as exc:  # pragma: no cover - best-effort installer
-                      log(f"pip install failed: {exc}")
-                      return False
-              try:
-                  import opentimestamps  # type: ignore  # noqa: F401
-                  return True
-              except ImportError:
-                  log("Unable to import opentimestamps after installation attempt.")
-                  return False
-          
-          
-          def extract_ots_height(data: bytes) -> str:
-              if not data:
-                  return ""
-              if not ensure_opentimestamps():
-                  return ""
-              try:
-                  from opentimestamps.core.serialize import StreamDeserializationContext
-                  from opentimestamps.core.timestamp import DetachedTimestampFile
-                  from opentimestamps.core.notary import BitcoinBlockHeaderAttestation
-              except Exception as exc:  # pragma: no cover - depends on package internals
-                  log(f"Unable to import OpenTimestamps parser: {exc}")
-                  return ""
-          
-              try:
-                  ctx = StreamDeserializationContext(io.BytesIO(data))
-                  timestamp = DetachedTimestampFile.deserialize(ctx).timestamp
-              except Exception as exc:  # pragma: no cover - invalid proof
-                  log(f"Failed to parse OTS proof: {exc}")
-                  return ""
-          
-              heights = sorted({
-                  att.height
-                  for _path, att in timestamp.all_attestations()
-                  if isinstance(att, BitcoinBlockHeaderAttestation)
-              })
-              if not heights:
-                  return ""
-              return str(heights[-1])
           
           
           def write_output(name: str, value: str) -> None:
@@ -219,35 +163,42 @@ jobs:
                   write_output("cron_state", default_cron_state)
                   return 0
           
-              ots_path = (
-                  release_entry.get("files", {})
-                  .get("ots", {})
-                  .get("path")
-              )
-              if not ots_path:
-                  log("Latest release lacks an OTS proof path; allowing workflow to proceed.")
-                  write_output("should_run", "true")
-                  write_output("cron_state", default_cron_state)
-                  return 0
-          
-              ots_bytes = fetch_bytes(f"{base}/{ots_path}")
-              ots_height = extract_ots_height(ots_bytes or b"")
-          
-              if ots_height and index_height == ots_height:
+              files_info = release_entry.get("files") or {}
+              ots_info = files_info.get("ots") or {}
+              ots_path = ots_info.get("path") or ""
+              ots_sha = ots_info.get("sha256") or ""
+
+              if index_height:
                   log(
-                      f"Detected finalized Bitcoin block {index_height} for current letter; skipping event '{event_name or 'unknown'}'."
+                      f"Detected finalization marker in docs/index.html at Bitcoin block {index_height}."
                   )
-                  if event_name == "schedule":
-                      cron_state = "disable"
+                  if ots_path:
+                      proof_url = f"{base}/{ots_path}"
+                      ots_bytes = fetch_bytes(proof_url)
+                      if ots_bytes:
+                          log(
+                              "Proof artifact present ("
+                              f"{len(ots_bytes)} bytes, sha256={ots_sha or 'unknown'}); treating letter as finalized."
+                          )
+                          if event_name == "schedule":
+                              cron_state = "disable"
+                          else:
+                              cron_state = "none"
+                          write_output("should_run", "false")
+                          write_output("cron_state", cron_state)
+                          return 0
+                      else:
+                          log(
+                              "Unable to download proof artifact despite finalization marker; proceeding with upgrade run."
+                          )
                   else:
-                      cron_state = "none"
-                  write_output("should_run", "false")
-                  write_output("cron_state", cron_state)
-                  return 0
+                      log(
+                          "docs/index.html shows a finalized block but RELEASES.json lacks an ots path; proceeding."
+                      )
 
               log(
                   "Proof not yet finalized for current letter (index height: "
-                  f"{index_height or 'n/a'}, proof height: {ots_height or 'n/a'}); proceeding."
+                  f"{index_height or 'n/a'}, proof present: {'yes' if ots_path else 'no'}); proceeding."
               )
               write_output("should_run", "true")
               write_output("cron_state", default_cron_state)
