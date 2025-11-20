@@ -20,6 +20,7 @@ concurrency:
 permissions:
   contents: write
   actions: write
+  pull-requests: write
 
 jobs:
   precheck:
@@ -455,13 +456,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: .github/scripts/wait_for_pages_idle.sh
 
-      - uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Open pull request with updated proof
+        uses: peter-evans/create-pull-request@v6
         with:
-          branch: ${{ github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit_message: "chore(ots): upgrade proof + refresh status [ots-upgrade-auto]"
-          add_options: --ignore-missing
-          file_pattern: |
+          branch: ots-upgrade/auto-refresh
+          title: "chore(ots): upgrade proof + refresh status"
+          commit-message: "chore(ots): upgrade proof + refresh status"
+          delete-branch: true
+          add-paths: |
             docs/index.html
             letter/*.ots
+          body: |
+            This is an automated pull request opened by the **ots-upgrade** workflow after refreshing the OpenTimestamps proof and status footer. If changes look good, merge to publish the updated proof.
 
