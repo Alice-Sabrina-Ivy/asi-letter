@@ -23,13 +23,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Install runtime dependencies
+        run: sudo apt-get update && sudo apt-get install -y gnupg
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Generate manifest (python)
-        run: python3 scripts/gen_releases_manifest.py
-      - name: Update version metadata in docs
-        run: python3 scripts/update_version_metadata.py
+      - name: Regenerate release artifacts
+        run: python3 scripts/release.py
       - name: Rebase onto latest ${{ github.ref_name }} before committing
         shell: bash
         run: |
