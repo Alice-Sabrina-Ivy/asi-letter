@@ -20,6 +20,7 @@ concurrency:
 permissions:
   contents: write
   actions: write
+  variables: write
 
 jobs:
   precheck:
@@ -452,5 +453,4 @@ jobs:
           file_pattern: |
             docs/index.html
             letter/*.ots
-            docs/*.ots
 
