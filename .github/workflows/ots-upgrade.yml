@@ -456,17 +456,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: .github/scripts/wait_for_pages_idle.sh
 
-      - name: Open pull request with updated proof
-        uses: peter-evans/create-pull-request@v6
+      - name: Commit upgraded proof and refreshed footer
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ots-upgrade/auto-refresh
-          title: "chore(ots): upgrade proof + refresh status"
-          commit-message: "chore(ots): upgrade proof + refresh status"
-          delete-branch: true
-          add-paths: |
+          commit_message: "chore(ots): upgrade proof + refresh status"
+          file_pattern: |
             docs/index.html
             letter/*.ots
-          body: |
-            This is an automated pull request opened by the **ots-upgrade** workflow after refreshing the OpenTimestamps proof and status footer. If changes look good, merge to publish the updated proof.
 
