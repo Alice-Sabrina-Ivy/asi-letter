@@ -271,6 +271,11 @@ jobs:
         run: |
           set -euo pipefail
 
+          if ! command -v gh >/dev/null 2>&1; then
+            echo "Warning: gh CLI not available; skipping cron toggle" >&2
+            exit 0
+          fi
+
           repo="${GITHUB_REPOSITORY:-}"
           if [[ -n "$repo" ]]; then
             repo_args=(--repo "$repo")
@@ -280,10 +285,14 @@ jobs:
 
           case "$DESIRED" in
             enable)
-              gh variable set OTS_UPGRADE_CRON_ENABLED --body true "${repo_args[@]}"
+              if ! gh variable set OTS_UPGRADE_CRON_ENABLED --body true "${repo_args[@]}"; then
+                echo "Warning: unable to enable OTS_UPGRADE_CRON_ENABLED; continuing without toggling" >&2
+              fi
               ;;
             disable)
-              gh variable set OTS_UPGRADE_CRON_ENABLED --body false "${repo_args[@]}"
+              if ! gh variable set OTS_UPGRADE_CRON_ENABLED --body false "${repo_args[@]}"; then
+                echo "Warning: unable to disable OTS_UPGRADE_CRON_ENABLED; continuing without toggling" >&2
+              fi
               ;;
             *)
               echo "No cron toggle requested."
@@ -450,6 +459,7 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore(ots): upgrade proof + refresh status [ots-upgrade-auto]"
+          add_options: --ignore-missing
           file_pattern: |
             docs/index.html
             letter/*.ots
