@@ -203,7 +203,7 @@
           fetchGithubContentsAPI,
           () => fetchText('https://cdn.jsdelivr.net/gh/Alice-Sabrina-Ivy/asi-letter@main/docs/letter.md'),
           () => fetchText('https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/docs/letter.md'),
-          () => fetchText('./docs/letter.md')
+          () => fetchText('./letter.md')
         ];
         for (const attempt of tries){
           try{
