@@ -104,6 +104,13 @@ def file_info(path: Path, base: Path) -> Optional[Dict[str, Any]]:
     }
 
 
+def require_file(path: Path, base: Path, label: str) -> Dict[str, Any]:
+    info = file_info(path, base)
+    if info is None:
+        raise ManifestError(f"Missing {label}: {path}")
+    return info
+
+
 def ensure_gpg_keys(key_dir: Path) -> None:
     for key_file in sorted(key_dir.glob("*.asc")):
         try:
@@ -117,9 +124,9 @@ def ensure_gpg_keys(key_dir: Path) -> None:
             raise ManifestError("gpg executable not found") from exc
 
 
-def parse_sig_metadata(asc_path: Path) -> Optional[Dict[str, Optional[str]]]:
+def parse_sig_metadata(asc_path: Path) -> Dict[str, Optional[str]]:
     if not asc_path.exists():
-        return None
+        raise ManifestError(f"Missing signature: {asc_path}")
 
     try:
         proc = subprocess.run(
@@ -132,6 +139,9 @@ def parse_sig_metadata(asc_path: Path) -> Optional[Dict[str, Optional[str]]]:
     except FileNotFoundError as exc:
         raise ManifestError("gpg executable not found") from exc
 
+    if proc.returncode != 0:
+        raise ManifestError(f"Signature verification failed for {asc_path} (exit {proc.returncode})")
+
     fingerprint: Optional[str] = None
     uid: Optional[str] = None
     for line in proc.stdout.splitlines():
@@ -141,9 +151,9 @@ def parse_sig_metadata(asc_path: Path) -> Optional[Dict[str, Optional[str]]]:
                 fingerprint = parts[2].upper()
             elif len(parts) >= 4 and parts[1] == "GOODSIG":
                 uid = " ".join(parts[3:]).strip()
-    if fingerprint:
-        return {"fingerprint": fingerprint, "uid": uid or None}
-    return None
+    if not fingerprint:
+        raise ManifestError(f"Could not extract fingerprint from signature metadata: {asc_path}")
+    return {"fingerprint": fingerprint, "uid": uid or None}
 
 
 def ots_metadata(ots_path: Path, base: Path) -> Optional[Dict[str, Any]]:
@@ -169,9 +179,13 @@ def collect_releases(letter_dir: Path, base: Path, current_fp: str) -> List[Dict
         ots_path = asc_path.with_name(asc_path.name + ".ots")
 
         sig_meta = parse_sig_metadata(asc_path)
+        if sig_meta["fingerprint"] != current_fp:
+            raise ManifestError(
+                f"Signature fingerprint {sig_meta['fingerprint']} does not match expected {current_fp}"
+            )
         signer = {
-            "fingerprint": sig_meta["fingerprint"] if sig_meta else current_fp,
-            "uid": sig_meta["uid"] if sig_meta else None,
+            "fingerprint": sig_meta["fingerprint"],
+            "uid": sig_meta["uid"],
         }
 
         releases.append(
@@ -179,8 +193,8 @@ def collect_releases(letter_dir: Path, base: Path, current_fp: str) -> List[Dict
                 "version": version,
                 "signer": signer,
                 "files": {
-                    "md": file_info(md_path, base),
-                    "asc": file_info(asc_path, base),
+                    "md": require_file(md_path, base, "release markdown"),
+                    "asc": require_file(asc_path, base, "release signature"),
                     "ots": ots_metadata(ots_path, base),
                 },
             }

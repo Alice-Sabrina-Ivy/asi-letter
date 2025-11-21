@@ -51,6 +51,14 @@ def parse_args(argv: Iterable[str]) -> argparse.Namespace:
         help="Only check for pending updates; exit non-zero if changes are needed.",
     )
     parser.add_argument(
+        "--allow-missing-markers",
+        action="store_true",
+        help=(
+            "Skip files without any version markers instead of exiting; useful when "
+            "opting targets in gradually."
+        ),
+    )
+    parser.add_argument(
         "targets",
         nargs="*",
         type=Path,
@@ -135,11 +143,18 @@ def substitute_version_markers(text: str, version: VersionInfo) -> Tuple[str, in
     return updated, total
 
 
-def process_file(path: Path, version: VersionInfo, check_only: bool) -> bool:
+def process_file(path: Path, version: VersionInfo, check_only: bool, allow_missing: bool) -> bool:
     text = path.read_text(encoding="utf-8")
     updated, matches = substitute_version_markers(text, version)
     if matches == 0:
-        raise SystemExit(f"No version markers found in {path}")
+        message = (
+            f"No version markers found in {path}. Add a release-version marker or "
+            "rerun with --allow-missing-markers to skip this file."
+        )
+        if allow_missing:
+            print(message)
+            return False
+        raise SystemExit(message)
 
     if updated != text:
         if check_only:
@@ -160,7 +175,7 @@ def main(argv: Iterable[str]) -> int:
         target_path = resolve_path(target)
         if not target_path.exists():
             raise SystemExit(f"Target not found: {target_path}")
-        changed = process_file(target_path, version, args.check)
+        changed = process_file(target_path, version, args.check, args.allow_missing_markers)
         any_changes = any_changes or changed
         if args.check and changed:
             try:
