@@ -238,10 +238,10 @@ jobs:
                   log(
                       f"Detected finalized Bitcoin block {index_height} for current letter; skipping event '{event_name or 'unknown'}'."
                   )
-                  if event_name == "schedule":
-                      cron_state = "disable"
-                  else:
-                      cron_state = "none"
+                  # Always disable the cron toggle once the footer and proof agree so that
+                  # subsequent scheduled runs remain idle even if the most recent trigger
+                  # was a push/workflow_run event.
+                  cron_state = "disable"
                   write_output("should_run", "false")
                   write_output("cron_state", cron_state)
                   return 0
