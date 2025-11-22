@@ -21,6 +21,7 @@ permissions:
   contents: write
   actions: write
   pull-requests: write
+  variables: write
 
 jobs:
   precheck:
