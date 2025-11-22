@@ -266,10 +266,25 @@ jobs:
     steps:
       - name: Update cron toggle variable
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.OTS_UPGRADE_CRON_TOKEN }}
+          GH_FALLBACK_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DESIRED: ${{ needs.precheck.outputs.cron_state }}
         run: |
           set -euo pipefail
+
+          # Prefer a dedicated PAT (OTS_UPGRADE_CRON_TOKEN) so scheduled runs can
+          # flip the repo variable even when the default GITHUB_TOKEN is limited
+          # to read-only permissions.
+          if [[ -z "${GH_TOKEN:-}" && -n "${GH_FALLBACK_TOKEN:-}" ]]; then
+            GH_TOKEN="$GH_FALLBACK_TOKEN"
+          fi
+
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "Warning: no token available to update OTS_UPGRADE_CRON_ENABLED; skipping" >&2
+            exit 0
+          fi
+
+          export GH_TOKEN
 
           if ! command -v gh >/dev/null 2>&1; then
             echo "Warning: gh CLI not available; skipping cron toggle" >&2
