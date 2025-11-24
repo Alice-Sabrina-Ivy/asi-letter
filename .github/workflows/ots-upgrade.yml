@@ -194,18 +194,9 @@ jobs:
               height_match = re.search(r"Bitcoin block <strong>([0-9]+)</strong>", index_html)
               index_height = height_match.group(1) if height_match else ""
 
-              if already_finalized:
-                  default_cron_state = "enable" if (force_enable and index_version and index_version != already_finalized) else "none"
-
-              if already_finalized and index_version == already_finalized:
-                  log(
-                      "Current letter version matches previously finalized version; skipping."
-                  )
-                  cron_state = "disable"
-                  write_output("should_run", "false")
-                  write_output("cron_state", cron_state)
-                  write_output("finalized_version", index_version)
-                  return 0
+              new_letter_uploaded = bool(
+                  already_finalized and index_version and index_version != already_finalized
+              )
           
               releases_raw = fetch_text(f"{base}/letter/RELEASES.json")
               if releases_raw is None:
@@ -256,7 +247,9 @@ jobs:
               ots_bytes = fetch_bytes(f"{base}/{ots_path}")
               ots_height = extract_ots_height(ots_bytes or b"")
           
-              if ots_height and index_height == ots_height:
+              heights_match = bool(ots_height and index_height == ots_height)
+
+              if heights_match:
                   log(
                       f"Detected finalized Bitcoin block {index_height} for current letter; skipping event '{event_name or 'unknown'}'."
                   )
@@ -269,12 +262,23 @@ jobs:
                   write_output("finalized_version", index_version)
                   return 0
 
+              if already_finalized and not new_letter_uploaded:
+                  log(
+                      "Current letter version matches previously finalized version; skipping."
+                  )
+                  cron_state = "disable"
+                  write_output("should_run", "false")
+                  write_output("cron_state", cron_state)
+                  write_output("finalized_version", index_version)
+                  return 0
+
               log(
                   "Proof not yet finalized for current letter (index height: "
                   f"{index_height or 'n/a'}, proof height: {ots_height or 'n/a'}); proceeding."
               )
               write_output("should_run", "true")
-              write_output("cron_state", default_cron_state)
+              next_cron_state = "enable" if new_letter_uploaded else default_cron_state
+              write_output("cron_state", next_cron_state)
               write_output("finalized_version", "")
               return 0
           
