@@ -29,6 +29,7 @@ jobs:
     outputs:
       should_run: ${{ steps.decision.outputs.should_run }}
       cron_state: ${{ steps.decision.outputs.cron_state }}
+      finalized_version: ${{ steps.decision.outputs.finalized_version }}
     steps:
       - name: Determine whether workflow should proceed
         id: decision
@@ -39,6 +40,7 @@ jobs:
           REF: ${{ github.ref }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           REPOSITORY: ${{ github.repository }}
+          FINALIZED_VERSION: ${{ vars.OTS_UPGRADE_FINALIZED_VERSION }}
         run: |
           set -euo pipefail
 
@@ -165,12 +167,14 @@ jobs:
                   log("Manual dispatch requested; allowing workflow to proceed.")
                   write_output("should_run", "true")
                   write_output("cron_state", cron_state)
+                  write_output("finalized_version", "")
                   return 0
 
               repository = os.environ["REPOSITORY"]
               branch = determine_branch()
 
               base = f"https://raw.githubusercontent.com/{repository}/{branch}"
+              already_finalized = os.environ.get("FINALIZED_VERSION", "").strip()
 
               if force_enable:
                   log(
@@ -182,18 +186,30 @@ jobs:
                   log("Unable to inspect docs/index.html; allowing workflow to proceed.")
                   write_output("should_run", "true")
                   write_output("cron_state", default_cron_state)
+                  write_output("finalized_version", "")
                   return 0
-          
+
               version_match = re.search(r"<!--\s*release-version:\s*v?([0-9][0-9.]+)\s*-->", index_html)
               index_version = version_match.group(1) if version_match else ""
               height_match = re.search(r"Bitcoin block <strong>([0-9]+)</strong>", index_html)
               index_height = height_match.group(1) if height_match else ""
+
+              if already_finalized and index_version == already_finalized:
+                  log(
+                      "Current letter version matches previously finalized version; skipping."
+                  )
+                  cron_state = "disable"
+                  write_output("should_run", "false")
+                  write_output("cron_state", cron_state)
+                  write_output("finalized_version", index_version)
+                  return 0
           
               releases_raw = fetch_text(f"{base}/letter/RELEASES.json")
               if releases_raw is None:
                   log("Unable to inspect RELEASES.json; allowing workflow to proceed.")
                   write_output("should_run", "true")
                   write_output("cron_state", default_cron_state)
+                  write_output("finalized_version", "")
                   return 0
 
               try:
@@ -202,6 +218,7 @@ jobs:
                   log(f"Failed to parse RELEASES.json: {exc}")
                   write_output("should_run", "true")
                   write_output("cron_state", default_cron_state)
+                  write_output("finalized_version", "")
                   return 0
           
               release_entry = None
@@ -218,6 +235,7 @@ jobs:
                   log("No releases found; allowing workflow to proceed.")
                   write_output("should_run", "true")
                   write_output("cron_state", default_cron_state)
+                  write_output("finalized_version", "")
                   return 0
           
               ots_path = (
@@ -229,6 +247,7 @@ jobs:
                   log("Latest release lacks an OTS proof path; allowing workflow to proceed.")
                   write_output("should_run", "true")
                   write_output("cron_state", default_cron_state)
+                  write_output("finalized_version", "")
                   return 0
           
               ots_bytes = fetch_bytes(f"{base}/{ots_path}")
@@ -244,6 +263,7 @@ jobs:
                   cron_state = "disable"
                   write_output("should_run", "false")
                   write_output("cron_state", cron_state)
+                  write_output("finalized_version", index_version)
                   return 0
 
               log(
@@ -252,6 +272,7 @@ jobs:
               )
               write_output("should_run", "true")
               write_output("cron_state", default_cron_state)
+              write_output("finalized_version", "")
               return 0
           
           
@@ -268,38 +289,44 @@ jobs:
         uses: actions/github-script@v7
         env:
           DESIRED: ${{ needs.precheck.outputs.cron_state }}
+          FINALIZED_VERSION: ${{ needs.precheck.outputs.finalized_version }}
         with:
           github-token: ${{ secrets.OTS_UPGRADE_CRON_TOKEN != '' && secrets.OTS_UPGRADE_CRON_TOKEN || github.token }}
           script: |
             const desired = process.env.DESIRED;
+            const finalizedVersion = process.env.FINALIZED_VERSION || '';
 
-            if (desired !== 'enable' && desired !== 'disable') {
+            const ensureVariable = async (name, value) => {
+              try {
+                await github.rest.actions.updateRepoVariable({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name,
+                  value,
+                });
+                core.info(`Updated ${name} to '${value}'.`);
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.actions.createRepoVariable({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name,
+                  value,
+                });
+                core.info(`Created ${name} with value '${value}'.`);
+              }
+            };
+
+            if (desired === 'enable' || desired === 'disable') {
+              const value = desired === 'enable' ? 'true' : 'false';
+              await ensureVariable('OTS_UPGRADE_CRON_ENABLED', value);
+            } else {
               core.info('No cron toggle requested.');
-              return;
             }
 
-            const value = desired === 'enable' ? 'true' : 'false';
-
-            try {
-              await github.rest.actions.updateRepoVariable({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                name: 'OTS_UPGRADE_CRON_ENABLED',
-                value,
-              });
-              core.info(`Updated OTS_UPGRADE_CRON_ENABLED to ${value}.`);
-              return;
-            } catch (error) {
-              if (error.status !== 404) throw error;
+            if (finalizedVersion || desired === 'enable') {
+              await ensureVariable('OTS_UPGRADE_FINALIZED_VERSION', finalizedVersion);
             }
-
-            await github.rest.actions.createRepoVariable({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              name: 'OTS_UPGRADE_CRON_ENABLED',
-              value,
-            });
-            core.info(`Created OTS_UPGRADE_CRON_ENABLED with value ${value}.`);
 
   upgrade-and-update:
     needs:
