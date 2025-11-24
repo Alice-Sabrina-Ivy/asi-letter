@@ -1,0 +1,82 @@
+name: ots-upgrade-activator
+
+on:
+  push:
+    paths:
+      - "docs/index.html"
+      - "letter/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  ensure-enabled:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Re-enable ots-upgrade when a new letter is published
+        uses: actions/github-script@v7
+        env:
+          FINALIZED_VERSION: ${{ vars.OTS_UPGRADE_FINALIZED_VERSION }}
+          WORKFLOW_FILE: ots-upgrade.yml
+        with:
+          script: |
+            const finalizedVersion = (process.env.FINALIZED_VERSION || '').trim();
+            const workflowFile = process.env.WORKFLOW_FILE || 'ots-upgrade.yml';
+
+            const ref = (context.ref || '').replace('refs/heads/', '') || context.payload.repository.default_branch || 'main';
+            const base = `https://raw.githubusercontent.com/${context.repo.owner}/${context.repo.repo}/${ref}`;
+            const indexUrl = `${base}/docs/index.html`;
+            const releasesUrl = `${base}/letter/RELEASES.json`;
+
+            const fetchText = async (url) => {
+              const response = await fetch(url);
+              if (!response.ok) {
+                throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+              }
+              return response.text();
+            };
+
+            const indexHtml = await fetchText(indexUrl);
+            const versionMatch = indexHtml.match(/<!--\s*release-version:\s*v?([0-9][0-9.]+)\s*-->/);
+            const indexVersion = (versionMatch && versionMatch[1]) || '';
+
+            const releasesRaw = await fetchText(releasesUrl);
+            const releases = JSON.parse(releasesRaw);
+            const releasesList = releases.releases || [];
+            const latestVersion = releasesList.length ? releasesList[0].version : '';
+
+            const hasNewLetter = !!(
+              (indexVersion && finalizedVersion && indexVersion !== finalizedVersion) ||
+              (latestVersion && finalizedVersion && latestVersion !== finalizedVersion)
+            );
+
+            const { data: workflow } = await github.rest.actions.getWorkflow({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: workflowFile,
+            });
+
+            if (hasNewLetter && workflow.state !== 'active') {
+              core.info(`Detected new letter version (${indexVersion || latestVersion}); re-enabling ${workflowFile}.`);
+              await github.rest.actions.enableWorkflow({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflowFile,
+              });
+              await github.rest.actions.updateRepoVariable({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'OTS_UPGRADE_CRON_ENABLED',
+                value: 'true',
+              });
+              await github.rest.actions.updateRepoVariable({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'OTS_UPGRADE_FINALIZED_VERSION',
+                value: '',
+              });
+            } else {
+              core.info('No new letter detected or workflow already active; no action taken.');
+            }
