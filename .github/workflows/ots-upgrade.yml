@@ -21,6 +21,7 @@ permissions:
   contents: write
   actions: write
   pull-requests: write
+  variables: write
 
 jobs:
   precheck:
@@ -265,54 +266,69 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update cron toggle variable
+        uses: actions/github-script@v7
         env:
-          GH_TOKEN: ${{ secrets.OTS_UPGRADE_CRON_TOKEN }}
-          GH_FALLBACK_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DESIRED: ${{ needs.precheck.outputs.cron_state }}
-        run: |
-          set -euo pipefail
+        with:
+          github-token: ${{ secrets.OTS_UPGRADE_CRON_TOKEN != '' && secrets.OTS_UPGRADE_CRON_TOKEN || github.token }}
+          script: |
+            const desired = process.env.DESIRED;
 
-          # Prefer a dedicated PAT (OTS_UPGRADE_CRON_TOKEN) so scheduled runs can
-          # flip the repo variable even when the default GITHUB_TOKEN is limited
-          # to read-only permissions.
-          if [[ -z "${GH_TOKEN:-}" && -n "${GH_FALLBACK_TOKEN:-}" ]]; then
-            GH_TOKEN="$GH_FALLBACK_TOKEN"
-          fi
+            if (desired !== 'enable' && desired !== 'disable') {
+              core.info('No cron toggle requested.');
+              return;
+            }
 
-          if [[ -z "${GH_TOKEN:-}" ]]; then
-            echo "Warning: no token available to update OTS_UPGRADE_CRON_ENABLED; skipping" >&2
-            exit 0
-          fi
+            const value = desired === 'enable' ? 'true' : 'false';
 
-          export GH_TOKEN
+            async function fetchCurrent(label) {
+              try {
+                const res = await github.rest.actions.getRepoVariable({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: 'OTS_UPGRADE_CRON_ENABLED',
+                });
 
-          if ! command -v gh >/dev/null 2>&1; then
-            echo "Warning: gh CLI not available; skipping cron toggle" >&2
-            exit 0
-          fi
+                core.info(`${label} value: ${res.data.value}`);
+                return res.data.value;
+              } catch (error) {
+                if (error.status === 404) {
+                  core.info(`${label} value: <unset>`);
+                  return null;
+                }
 
-          repo="${GITHUB_REPOSITORY:-}"
-          if [[ -n "$repo" ]]; then
-            repo_args=(--repo "$repo")
-          else
-            repo_args=()
-          fi
+                core.warning(`Unable to read cron variable (${label}): ${error.message}`);
+                throw error;
+              }
+            }
 
-          case "$DESIRED" in
-            enable)
-              if ! gh variable set OTS_UPGRADE_CRON_ENABLED --body true "${repo_args[@]}"; then
-                echo "Warning: unable to enable OTS_UPGRADE_CRON_ENABLED; continuing without toggling" >&2
-              fi
-              ;;
-            disable)
-              if ! gh variable set OTS_UPGRADE_CRON_ENABLED --body false "${repo_args[@]}"; then
-                echo "Warning: unable to disable OTS_UPGRADE_CRON_ENABLED; continuing without toggling" >&2
-              fi
-              ;;
-            *)
-              echo "No cron toggle requested."
-              ;;
-          esac
+            try {
+              await github.rest.actions.updateRepoVariable({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'OTS_UPGRADE_CRON_ENABLED',
+                value,
+              });
+              core.info(`Updated OTS_UPGRADE_CRON_ENABLED to ${value}.`);
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+
+            await github.rest.actions.createRepoVariable({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'OTS_UPGRADE_CRON_ENABLED',
+              value,
+            });
+            core.info(`Created OTS_UPGRADE_CRON_ENABLED with value ${value}.`);
+
+            const updated = await fetchCurrent('Post-update');
+            if (updated !== value) {
+              throw new Error(
+                `Cron toggle verification failed: expected '${value}' but found '${updated ?? '<unset>'}'. ` +
+                  'Ensure the provided token has "variables:write" permission.'
+              );
+            }
 
   upgrade-and-update:
     needs:
