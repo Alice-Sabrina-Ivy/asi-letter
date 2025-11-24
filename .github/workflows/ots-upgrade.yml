@@ -162,7 +162,7 @@ jobs:
               event_name = os.environ.get("EVENT_NAME", "")
               cron_state = "none"
               force_enable = event_name in {"push", "workflow_run"}
-              default_cron_state = "enable" if force_enable else "none"
+              default_cron_state = "enable" if (force_enable and not os.environ.get("FINALIZED_VERSION")) else "none"
               if event_name == "workflow_dispatch":
                   log("Manual dispatch requested; allowing workflow to proceed.")
                   write_output("should_run", "true")
@@ -193,6 +193,9 @@ jobs:
               index_version = version_match.group(1) if version_match else ""
               height_match = re.search(r"Bitcoin block <strong>([0-9]+)</strong>", index_html)
               index_height = height_match.group(1) if height_match else ""
+
+              if already_finalized:
+                  default_cron_state = "enable" if (force_enable and index_version and index_version != already_finalized) else "none"
 
               if already_finalized and index_version == already_finalized:
                   log(
