@@ -23,6 +23,35 @@ permissions:
   pull-requests: write
 
 jobs:
+  disable-when-cron-off:
+    if: ${{ github.event_name == 'schedule' && vars.OTS_UPGRADE_CRON_ENABLED == 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disable workflow when cron is toggled off
+        uses: actions/github-script@v7
+        env:
+          WORKFLOW_FILE: ots-upgrade.yml
+        with:
+          script: |
+            const workflowFile = process.env.WORKFLOW_FILE || context.workflow;
+
+            const { data: workflow } = await github.rest.actions.getWorkflow({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: workflowFile,
+            });
+
+            if (workflow.state !== 'disabled_manually') {
+              core.info(`Disabling ${workflowFile} because OTS_UPGRADE_CRON_ENABLED is false.`);
+              await github.rest.actions.disableWorkflow({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflowFile,
+              });
+            } else {
+              core.info('Workflow already disabled.');
+            }
+
   precheck:
     if: ${{ github.event_name != 'schedule' || vars.OTS_UPGRADE_CRON_ENABLED != 'false' }}
     runs-on: ubuntu-latest
