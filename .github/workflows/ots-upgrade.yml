@@ -80,7 +80,7 @@ jobs:
           import subprocess
           import sys
           from urllib.error import URLError, HTTPError
-          from urllib.request import urlopen
+          from urllib.request import Request, urlopen
           
           
           def log(msg: str) -> None:
@@ -104,22 +104,58 @@ jobs:
           from typing import Optional
 
 
+          def _with_retries(fetch_func, url: str, *, attempts: int = 3, delay: float = 0.5):
+              """Fetch helper with retries to ride out transient network hiccups."""
+
+              last_error: Optional[Exception] = None
+              for attempt in range(1, attempts + 1):
+                  try:
+                      return fetch_func(url)
+                  except (URLError, HTTPError) as exc:
+                      last_error = exc
+                      log(f"Attempt {attempt} for {url} failed: {exc}")
+                      if attempt < attempts:
+                          import time
+
+                          time.sleep(delay)
+
+              if last_error is not None:
+                  raise last_error
+              return None
+
+
+          def _request(url: str):
+              token = os.environ.get("GITHUB_TOKEN")
+              headers = {"User-Agent": "asi-letter-ots-precheck"}
+              if token:
+                  headers["Authorization"] = f"Bearer {token}"
+              return urlopen(Request(url, headers=headers))
+
+
           def fetch_text(url: str) -> Optional[str]:
               log(f"Fetching {url} ...")
-              try:
-                  with urlopen(url) as resp:
+
+              def _fetch(u: str) -> str:
+                  with _request(u) as resp:
                       return resp.read().decode("utf-8", "replace")
-              except (URLError, HTTPError) as exc:
+
+              try:
+                  return _with_retries(_fetch, url)
+              except Exception as exc:
                   log(f"Failed to fetch {url}: {exc}")
                   return None
-          
-          
+
+
           def fetch_bytes(url: str) -> Optional[bytes]:
               log(f"Fetching {url} (binary) ...")
-              try:
-                  with urlopen(url) as resp:
+
+              def _fetch(u: str) -> bytes:
+                  with _request(u) as resp:
                       return resp.read()
-              except (URLError, HTTPError) as exc:
+
+              try:
+                  return _with_retries(_fetch, url)
+              except Exception as exc:
                   log(f"Failed to fetch {url}: {exc}")
                   return None
           
@@ -152,6 +188,12 @@ jobs:
               if not data:
                   return ""
               if not ensure_opentimestamps():
+                  # Fall back to searching the raw payload for block height hints.
+                  matches = re.findall(
+                      rb"BitcoinBlockHeaderAttestation\(([0-9]+)\)", data
+                  )
+                  if matches:
+                      return matches[-1].decode("ascii", "ignore")
                   return ""
               try:
                   from opentimestamps.core.serialize import StreamDeserializationContext
