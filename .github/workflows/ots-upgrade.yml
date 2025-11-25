@@ -21,7 +21,6 @@ permissions:
   contents: write
   actions: write
   pull-requests: write
-  workflows: write
 
 jobs:
   disable-when-cron-off:
