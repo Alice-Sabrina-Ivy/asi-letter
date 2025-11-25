@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
   actions: write
+  workflows: write
 
 jobs:
   ensure-enabled:
