@@ -53,7 +53,6 @@ jobs:
             }
 
   precheck:
-    if: ${{ github.event_name != 'schedule' || vars.OTS_UPGRADE_CRON_ENABLED != 'false' }}
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.decision.outputs.should_run }}
