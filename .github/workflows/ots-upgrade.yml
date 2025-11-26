@@ -72,8 +72,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          python -m pip install --quiet --upgrade opentimestamps-client
-
           python - <<'PY'
           import io
           import json
