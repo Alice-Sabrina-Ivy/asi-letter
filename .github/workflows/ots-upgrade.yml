@@ -23,35 +23,6 @@ permissions:
   pull-requests: write
 
 jobs:
-  disable-when-cron-off:
-    if: ${{ github.event_name == 'schedule' && vars.OTS_UPGRADE_CRON_ENABLED == 'false' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Disable workflow when cron is toggled off
-        uses: actions/github-script@v7
-        env:
-          WORKFLOW_FILE: ots-upgrade.yml
-        with:
-          script: |
-            const workflowFile = process.env.WORKFLOW_FILE || context.workflow;
-
-            const { data: workflow } = await github.rest.actions.getWorkflow({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: workflowFile,
-            });
-
-            if (workflow.state !== 'disabled_manually') {
-              core.info(`Disabling ${workflowFile} because OTS_UPGRADE_CRON_ENABLED is false.`);
-              await github.rest.actions.disableWorkflow({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: workflowFile,
-              });
-            } else {
-              core.info('Workflow already disabled.');
-            }
-
   precheck:
     runs-on: ubuntu-latest
     outputs:
@@ -356,80 +327,6 @@ jobs:
           if __name__ == "__main__":
               sys.exit(main())
           PY
-
-  manage-cron-flag:
-    needs: precheck
-    if: ${{ needs.precheck.outputs.cron_state != 'none' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Update cron toggle variable
-        uses: actions/github-script@v7
-        env:
-          DESIRED: ${{ needs.precheck.outputs.cron_state }}
-          FINALIZED_VERSION: ${{ needs.precheck.outputs.finalized_version }}
-          WORKFLOW_FILE: ots-upgrade.yml
-        with:
-          github-token: ${{ secrets.OTS_UPGRADE_CRON_TOKEN != '' && secrets.OTS_UPGRADE_CRON_TOKEN || github.token }}
-          script: |
-            const desired = process.env.DESIRED;
-            const finalizedVersion = process.env.FINALIZED_VERSION || '';
-            const workflowFile = process.env.WORKFLOW_FILE || context.workflow;
-
-            const ensureVariable = async (name, value) => {
-              try {
-                await github.rest.actions.updateRepoVariable({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  name,
-                  value,
-                });
-                core.info(`Updated ${name} to '${value}'.`);
-              } catch (error) {
-                if (error.status !== 404) throw error;
-                await github.rest.actions.createRepoVariable({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  name,
-                  value,
-                });
-                core.info(`Created ${name} with value '${value}'.`);
-              }
-            };
-
-            if (desired === 'enable' || desired === 'disable') {
-              const value = desired === 'enable' ? 'true' : 'false';
-              await ensureVariable('OTS_UPGRADE_CRON_ENABLED', value);
-            } else {
-              core.info('No cron toggle requested.');
-            }
-
-            if (finalizedVersion || desired === 'enable') {
-              await ensureVariable('OTS_UPGRADE_FINALIZED_VERSION', finalizedVersion);
-            }
-
-            const { data: workflow } = await github.rest.actions.getWorkflow({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: workflowFile,
-            });
-
-            if (desired === 'disable' && workflow.state !== 'disabled_manually') {
-              core.info(`Disabling workflow ${workflowFile} to halt scheduled triggers.`);
-              await github.rest.actions.disableWorkflow({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: workflowFile,
-              });
-            } else if (desired === 'enable' && workflow.state !== 'active') {
-              core.info(`Re-enabling workflow ${workflowFile} for new letter activity.`);
-              await github.rest.actions.enableWorkflow({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: workflowFile,
-              });
-            } else {
-              core.info('No workflow state change required.');
-            }
 
   upgrade-and-update:
     needs:
