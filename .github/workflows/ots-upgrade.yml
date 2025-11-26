@@ -461,12 +461,9 @@ jobs:
 
           STATUS="Bitcoin anchoring pending. Proof will update automatically."
           TARGET=""
-          HEIGHT=""
-          VERSION=""
 
           if [[ -f letter/RELEASES.json ]]; then
             TARGET="$(python .github/scripts/get_latest_letter_asc.py 2>/dev/null || true)"
-            VERSION="$(jq -r '.releases[0].version // ""' letter/RELEASES.json 2>/dev/null || true)"
           fi
 
           if [[ -n "$TARGET" ]]; then
@@ -479,12 +476,6 @@ jobs:
 
           if [[ -z "$TARGET" ]] && [[ -f docs/letter.md.asc ]]; then
             TARGET="docs/letter.md.asc"
-          fi
-
-          if [[ -z "$VERSION" ]] && [[ -n "$TARGET" ]]; then
-            if [[ "$TARGET" =~ v([0-9][0-9.]+) ]]; then
-              VERSION="${BASH_REMATCH[1]}"
-            fi
           fi
 
           OTS_CLI="$(command -v ots 2>/dev/null || true)"
@@ -520,6 +511,7 @@ jobs:
               if cp "${TARGET}.ots" /tmp/proof.ots; then
                 [[ -n "$OTS_CLI" ]] && "$OTS_CLI" upgrade /tmp/proof.ots || true
 
+                HEIGHT=""
                 PY_OUT="$(python .github/scripts/extract_block_height.py /tmp/proof.ots 2>/dev/null || true)"
                 PY_OUT="${PY_OUT//$'\r'/}"
                 PY_OUT="${PY_OUT//$'\n'/}"
@@ -558,12 +550,8 @@ jobs:
           STATUS_SANITIZED="$(printf '%s' "$STATUS" | tr '\n' ' ' | tr -d '\r')"
           if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
             printf 'status_line=%s\n' "$STATUS_SANITIZED" >> "$GITHUB_OUTPUT"
-            printf 'height=%s\n' "$HEIGHT" >> "$GITHUB_OUTPUT"
-            printf 'version=%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
           else
             printf 'status_line=%s\n' "$STATUS_SANITIZED"
-            printf 'height=%s\n' "$HEIGHT"
-            printf 'version=%s\n' "$VERSION"
           fi
 
       - name: Ensure footer (scriptless, centered)
@@ -610,53 +598,4 @@ jobs:
           file_pattern: |
             docs/index.html
             letter/*.ots
-
-      - name: Disable cron when finalized
-        if: ${{ steps.status.outputs.height != '' && steps.status.outputs.version != '' }}
-        uses: actions/github-script@v7
-        env:
-          FINALIZED_VERSION: ${{ steps.status.outputs.version }}
-          WORKFLOW_FILE: ots-upgrade.yml
-          CRON_TOKEN: ${{ secrets.OTS_UPGRADE_CRON_TOKEN }}
-        with:
-          github-token: ${{ env.CRON_TOKEN != '' && env.CRON_TOKEN || github.token }}
-          script: |
-            const finalizedVersion = (process.env.FINALIZED_VERSION || '').trim();
-            const workflowFile = process.env.WORKFLOW_FILE || context.workflow;
-
-            if (!finalizedVersion) {
-              core.info('No finalized version detected; leaving cron state unchanged.');
-              return;
-            }
-
-            await github.rest.actions.updateRepoVariable({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              name: 'OTS_UPGRADE_FINALIZED_VERSION',
-              value: finalizedVersion,
-            });
-
-            await github.rest.actions.updateRepoVariable({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              name: 'OTS_UPGRADE_CRON_ENABLED',
-              value: 'false',
-            });
-
-            const { data: workflow } = await github.rest.actions.getWorkflow({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: workflowFile,
-            });
-
-            if (workflow.state !== 'disabled_manually') {
-              core.info(`Disabling workflow ${workflowFile} after finalizing version ${finalizedVersion}.`);
-              await github.rest.actions.disableWorkflow({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: workflowFile,
-              });
-            } else {
-              core.info('Workflow already disabled.');
-            }
 
