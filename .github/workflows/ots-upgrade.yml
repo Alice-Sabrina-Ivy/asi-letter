@@ -29,6 +29,7 @@ jobs:
       should_run: ${{ steps.decision.outputs.should_run }}
       cron_state: ${{ steps.decision.outputs.cron_state }}
       finalized_version: ${{ steps.decision.outputs.finalized_version }}
+      new_letter_uploaded: ${{ steps.decision.outputs.new_letter_uploaded }}
     steps:
       - name: Determine whether workflow should proceed
         id: decision
@@ -199,6 +200,20 @@ jobs:
                   fh.write(f"{name}={value}\n")
 
 
+          def finish(
+              should_run: bool,
+              cron_state_value: str,
+              finalized_version: str,
+              *,
+              new_letter_uploaded: bool = False,
+          ) -> int:
+              write_output("should_run", "true" if should_run else "false")
+              write_output("cron_state", cron_state_value)
+              write_output("finalized_version", finalized_version)
+              write_output("new_letter_uploaded", "true" if new_letter_uploaded else "false")
+              return 0
+
+
           def main() -> int:
               event_name = os.environ.get("EVENT_NAME", "")
               cron_state = "none"
@@ -206,16 +221,14 @@ jobs:
               default_cron_state = "enable" if (force_enable and not os.environ.get("FINALIZED_VERSION")) else "none"
               if event_name == "workflow_dispatch":
                   log("Manual dispatch requested; allowing workflow to proceed.")
-                  write_output("should_run", "true")
-                  write_output("cron_state", cron_state)
-                  write_output("finalized_version", "")
-                  return 0
+                  return finish(True, cron_state, "", new_letter_uploaded=False)
 
               repository = os.environ["REPOSITORY"]
               branch = determine_branch()
 
               base = f"https://raw.githubusercontent.com/{repository}/{branch}"
               already_finalized = os.environ.get("FINALIZED_VERSION", "").strip()
+              new_letter_uploaded = False
 
               if force_enable:
                   log(
@@ -224,11 +237,14 @@ jobs:
 
               index_html = fetch_text(f"{base}/docs/index.html")
               if index_html is None:
+                  if already_finalized:
+                      log(
+                          "Unable to inspect docs/index.html but proof was already finalized; pausing scheduled upgrades."
+                      )
+                      return finish(False, "disable", already_finalized)
+
                   log("Unable to inspect docs/index.html; allowing workflow to proceed.")
-                  write_output("should_run", "true")
-                  write_output("cron_state", default_cron_state)
-                  write_output("finalized_version", "")
-                  return 0
+                  return finish(True, default_cron_state, "")
 
               version_match = re.search(r"<!--\s*release-version:\s*v?([0-9][0-9.]+)\s*-->", index_html)
               index_version = version_match.group(1) if version_match else ""
@@ -238,23 +254,29 @@ jobs:
               new_letter_uploaded = bool(
                   already_finalized and index_version and index_version != already_finalized
               )
-          
+
               releases_raw = fetch_text(f"{base}/letter/RELEASES.json")
               if releases_raw is None:
+                  if already_finalized and not new_letter_uploaded:
+                      log(
+                          "Proof already finalized and unable to load RELEASES.json; pausing scheduled upgrades."
+                      )
+                      return finish(False, "disable", already_finalized)
+
                   log("Unable to inspect RELEASES.json; allowing workflow to proceed.")
-                  write_output("should_run", "true")
-                  write_output("cron_state", default_cron_state)
-                  write_output("finalized_version", "")
-                  return 0
+                  return finish(True, default_cron_state, "", new_letter_uploaded=new_letter_uploaded)
 
               try:
                   releases = json.loads(releases_raw)
               except json.JSONDecodeError as exc:
+                  if already_finalized and not new_letter_uploaded:
+                      log(
+                          "Proof already finalized but RELEASES.json is invalid; pausing scheduled upgrades."
+                      )
+                      return finish(False, "disable", already_finalized)
+
                   log(f"Failed to parse RELEASES.json: {exc}")
-                  write_output("should_run", "true")
-                  write_output("cron_state", default_cron_state)
-                  write_output("finalized_version", "")
-                  return 0
+                  return finish(True, default_cron_state, "", new_letter_uploaded=new_letter_uploaded)
           
               release_entry = None
               releases_list = releases.get("releases") or []
@@ -268,11 +290,8 @@ jobs:
           
               if release_entry is None:
                   log("No releases found; allowing workflow to proceed.")
-                  write_output("should_run", "true")
-                  write_output("cron_state", default_cron_state)
-                  write_output("finalized_version", "")
-                  return 0
-          
+                  return finish(True, default_cron_state, "", new_letter_uploaded=new_letter_uploaded)
+
               ots_path = (
                   release_entry.get("files", {})
                   .get("ots", {})
@@ -280,10 +299,7 @@ jobs:
               )
               if not ots_path:
                   log("Latest release lacks an OTS proof path; allowing workflow to proceed.")
-                  write_output("should_run", "true")
-                  write_output("cron_state", default_cron_state)
-                  write_output("finalized_version", "")
-                  return 0
+                  return finish(True, default_cron_state, "", new_letter_uploaded=new_letter_uploaded)
           
               ots_bytes = fetch_bytes(f"{base}/{ots_path}")
               ots_height = extract_ots_height(ots_bytes or b"")
@@ -298,35 +314,96 @@ jobs:
                   # subsequent scheduled runs remain idle even if the most recent trigger
                   # was a push/workflow_run event.
                   cron_state = "disable"
-                  write_output("should_run", "false")
-                  write_output("cron_state", cron_state)
-                  write_output("finalized_version", index_version)
-                  return 0
+                  return finish(False, cron_state, index_version)
 
               if already_finalized and not new_letter_uploaded:
                   log(
                       "Current letter version matches previously finalized version; skipping."
                   )
                   cron_state = "disable"
-                  write_output("should_run", "false")
-                  write_output("cron_state", cron_state)
-                  write_output("finalized_version", index_version)
-                  return 0
+                  return finish(False, cron_state, index_version)
 
               log(
                   "Proof not yet finalized for current letter (index height: "
                   f"{index_height or 'n/a'}, proof height: {ots_height or 'n/a'}); proceeding."
               )
-              write_output("should_run", "true")
               next_cron_state = "enable" if new_letter_uploaded else default_cron_state
-              write_output("cron_state", next_cron_state)
-              write_output("finalized_version", "")
-              return 0
+              return finish(True, next_cron_state, "", new_letter_uploaded=new_letter_uploaded)
           
           
           if __name__ == "__main__":
               sys.exit(main())
           PY
+
+  sync-finalization-flag:
+    needs:
+      - precheck
+    if: ${{ needs.precheck.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Persist finalized letter version toggle
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const finalizedVersion = `${{ needs.precheck.outputs.finalized_version }}`.trim();
+            const newLetterUploaded = `${{ needs.precheck.outputs.new_letter_uploaded }}`.toLowerCase() === "true";
+            const shouldRun = `${{ needs.precheck.outputs.should_run }}`.toLowerCase() === "true";
+            const varName = "OTS_UPGRADE_FINALIZED_VERSION";
+            const { owner, repo } = context.repo;
+
+            async function getExisting() {
+              try {
+                return await github.rest.actions.getRepoVariable({ owner, repo, name: varName });
+              } catch (error) {
+                if (error.status === 404) {
+                  return null;
+                }
+                throw error;
+              }
+            }
+
+            async function setVariable(value) {
+              const existing = await getExisting();
+              if (existing) {
+                await github.rest.actions.updateRepoVariable({ owner, repo, name: varName, value });
+              } else {
+                await github.rest.actions.createRepoVariable({ owner, repo, name: varName, value });
+              }
+            }
+
+            async function deleteVariableIfPresent() {
+              const existing = await getExisting();
+              if (!existing) {
+                return false;
+              }
+              await github.rest.actions.deleteRepoVariable({ owner, repo, name: varName });
+              return true;
+            }
+
+            if (newLetterUploaded) {
+              const removed = await deleteVariableIfPresent();
+              if (removed) {
+                core.info(`Cleared ${varName} because a new letter is available.`);
+              } else {
+                core.info(`No ${varName} value to clear for the new letter.`);
+              }
+              return;
+            }
+
+            if (!finalizedVersion || shouldRun) {
+              core.info(`No finalized version to persist (finalized='${finalizedVersion}', should_run=${shouldRun}).`);
+              return;
+            }
+
+            const current = await getExisting();
+            if (current && current.value === finalizedVersion) {
+              core.info(`${varName} already reflects finalized version ${finalizedVersion}.`);
+              return;
+            }
+
+            await setVariable(finalizedVersion);
+            core.info(`Recorded finalized version ${finalizedVersion} in ${varName}.`);
 
   upgrade-and-update:
     needs:
