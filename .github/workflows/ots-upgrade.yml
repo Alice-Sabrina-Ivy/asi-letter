@@ -24,6 +24,8 @@ permissions:
 
 jobs:
   precheck:
+    # Skip scheduled runs entirely when the current letter is already finalized.
+    if: ${{ !(github.event_name == 'schedule' && vars.OTS_UPGRADE_FINALIZED_VERSION != '') }}
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.decision.outputs.should_run }}
@@ -495,4 +497,70 @@ jobs:
           file_pattern: |
             docs/index.html
             letter/*.ots
+
+  manage-cron-toggle:
+    needs:
+      - precheck
+    if: ${{ always() && needs.precheck.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update OTS finalized version flag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          CRON_STATE: ${{ needs.precheck.outputs.cron_state }}
+          FINALIZED_VERSION: ${{ needs.precheck.outputs.finalized_version }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+            echo "Missing GITHUB_TOKEN; skipping variable sync."
+            exit 0
+          fi
+
+          payload() {
+            python - <<'PY'
+import json
+import os
+
+value = os.environ.get("TARGET_VALUE", "")
+print(json.dumps({"name": "OTS_UPGRADE_FINALIZED_VERSION", "value": value}))
+PY
+          }
+
+          upsert_var() {
+            local body
+            body=$(TARGET_VALUE="$1" payload)
+            local url_base="https://api.github.com/repos/${REPOSITORY}/actions/variables/OTS_UPGRADE_FINALIZED_VERSION"
+
+            if ! curl -sSf -X PATCH \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -d "$body" \
+              "$url_base" >/dev/null 2>&1; then
+              curl -sSf -X POST \
+                -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                -d "$body" \
+                "https://api.github.com/repos/${REPOSITORY}/actions/variables" >/dev/null 2>&1
+            fi
+          }
+
+          case "${CRON_STATE:-none}" in
+            disable)
+              if [[ -n "${FINALIZED_VERSION:-}" ]]; then
+                echo "Recording finalized version '${FINALIZED_VERSION}' to pause cron runs."
+                upsert_var "${FINALIZED_VERSION}"
+              else
+                echo "Cron disable requested without a finalized version; leaving toggle unchanged."
+              fi
+              ;;
+            enable)
+              echo "Clearing finalized version to re-enable cron runs."
+              upsert_var ""
+              ;;
+            *)
+              echo "No cron toggle change requested (state: ${CRON_STATE:-none})."
+              ;;
+          esac
 
