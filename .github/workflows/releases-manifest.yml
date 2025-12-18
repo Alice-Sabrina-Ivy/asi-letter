@@ -26,12 +26,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TARGET_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
-      TARGET_REF: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.ref }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ env.TARGET_REF }}
+          ref: ${{ env.TARGET_BRANCH }}
       - name: Install runtime dependencies
         run: sudo apt-get update && sudo apt-get install -y gnupg
       - uses: actions/setup-python@v5

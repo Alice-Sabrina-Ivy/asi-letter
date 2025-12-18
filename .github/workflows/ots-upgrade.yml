@@ -354,10 +354,12 @@ jobs:
       - precheck
     if: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && needs.precheck.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ env.TARGET_BRANCH }}
           fetch-depth: 0
 
       - name: Install OpenTimestamps client + alt verifier
@@ -500,7 +502,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          branch="${GITHUB_REF##*/}"
+          branch="${TARGET_BRANCH:-${GITHUB_REF_NAME:-${GITHUB_REF#refs/heads/}}}"
           git fetch origin "$branch"
           git pull --rebase --autostash origin "$branch"
 
