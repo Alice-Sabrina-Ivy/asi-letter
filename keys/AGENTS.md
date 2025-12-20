@@ -1,20 +1,20 @@
 # keys/ — Codex Guide
 
 ## Directory purpose
-- Trusted cryptographic material for verifying ASI Letter signatures.
+- Trusted cryptographic material (fingerprint + public key) used to verify ASI Letter signatures.
 
 ## Key workflows/commands
-- Fingerprint normalization and README sync handled by `.github/workflows/sync-readme-fingerprint.yml`.
-- Verification scripts (`scripts/verify-clearsign.sh`, `scripts/gen_releases_manifest.py`) read `keys/FINGERPRINT` and import the public key in this directory.
+- Fingerprint normalization + README sync: `.github/workflows/sync-readme-fingerprint.yml` updates `README.md` from `FINGERPRINT`.
+- Verification scripts read these files: `bash scripts/verify-clearsign.sh`, `python3 scripts/gen_releases_manifest.py`.
 
-## File map
+## File map (every tracked item)
 | filename | what it does | important invariants / gotchas | how it’s used |
 | --- | --- | --- | --- |
-| `FINGERPRINT` | Canonical 40-hex-character fingerprint (uppercase) for the signing key. | Keep uppercase hex only; trailing whitespace/newlines are significant to some tooling. Used as source of truth for verification/manifest scripts and README updates. | Read by verification scripts and CI to ensure signatures match the trusted key; propagated into docs. |
-| `alice-asi-publickey.asc` | Exported OpenPGP public key for verifying signatures. | Should match the fingerprint above; do not edit contents manually. | Imported by users and scripts to validate `letter/*.asc` signatures. |
+| `AGENTS.md` | Directory guide. | Keep aligned with actual key material. | Contributor reference. |
+| `FINGERPRINT` | Canonical 40-hex fingerprint (uppercase) for the signing key. | Preserve uppercase hex with no spaces; workflow updates README based on this value. | Read by verification scripts/CI and manifest generator. |
+| `alice-asi-publickey.asc` | Exported OpenPGP public key. | Must match `FINGERPRINT`; do not hand-edit contents. | Imported by users/scripts to validate `letter/*.asc`. |
 
 ## Codex operating guidance
-- Edit policy: Do not modify these files except when rotating keys or updating the canonical fingerprint. Avoid reformatting `FINGERPRINT` (no spaces, uppercase hex only).
-- Validation: Run `bash scripts/verify-clearsign.sh` after any key/fingerprint change; regenerate manifests with `python3 scripts/gen_releases_manifest.py --check`.
-- Common failure modes: changing fingerprint formatting so automated sync fails; mismatched public key vs fingerprint; forgetting to update README via workflow after key changes.
-
+- Edit policy: Only change when rotating keys; avoid altering formatting of `FINGERPRINT` or contents of the public key.
+- Validation: After key updates, run `bash scripts/verify-clearsign.sh` and `python3 scripts/gen_releases_manifest.py --check`; ensure README sync workflow reflects new fingerprint.
+- Common failure modes: fingerprint formatting drift, mismatched key vs fingerprint, or skipping manifest/regeneration after key changes.

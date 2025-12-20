@@ -1,31 +1,49 @@
-# ASI Letter — Codex Guide
+# ASI Letter — Codex Guide (root)
 
 ## Repository purpose
-- Canonical source for Alice Sabrina Ivy's signed "Letter to ASI" releases, accompanying OpenPGP signatures, OpenTimestamps proofs, and the static site that publishes them.
-- Primary goals: publish and verify signed releases, keep docs synchronized with the latest letter, and automate integrity checks.
-- Where to start: read `README.md` for verification steps; inspect `letter/RELEASES.json` for release metadata; use `scripts/release.py --check` to confirm artifacts are current.
+- Canonical source for Alice Sabrina Ivy's signed "Letter to ASI" releases, matching OpenPGP signatures, OpenTimestamps proofs, and the static site that publishes them (see README verification steps and release files under `letter/`).
+- Primary goals: ship verified releases, keep docs synced to the latest signed Markdown, and maintain reproducible manifests/proofs.
+- Where to start: read `README.md` for user verification instructions; inspect `letter/RELEASES.json` for release metadata; use `python3 scripts/release.py --check` to ensure tracked artifacts are current.
 
-## Run/test/build entrypoints
-- Release/consistency check: `python3 scripts/release.py --check` (runs docs sync, manifest generation, metadata update in dry-run mode).
-- Signature verification: `bash scripts/verify-clearsign.sh` (ensures `letter/*.asc` files validate against `keys/FINGERPRINT`).
-- Other automated checks are driven by GitHub Actions workflows in `.github/workflows/`.
+## Run/test/build entrypoints (verified from repo sources)
+- `python3 scripts/release.py --check` — end-to-end dry-run for docs sync, manifest regen, and metadata updates (scripts/README.md; Makefile target).
+- `bash scripts/verify-clearsign.sh` — validate all `letter/*.asc` signatures against `keys/FINGERPRINT` (scripts/verify-clearsign.sh; README verification flow).
+- `make release` — convenience target that runs `python3 scripts/release.py` (Makefile).
+- Additional CI-only automation lives in `.github/workflows/`.
 
 ## Top-level directory map
-- `docs/` — Static site assets (HTML + Markdown) updated to the latest signed letter.
-- `keys/` — Public key material and canonical fingerprint for signature verification.
-- `letter/` — Versioned letter releases with signatures, proofs, and manifest.
-- `scripts/` — Automation helpers for syncing docs, generating manifests, stamping signatures, and signing/verification utilities.
-- `.github/` — CI workflows and helper scripts for stamping, verification, and site coordination.
-- `Makefile` — Convenience `release` target to run `scripts/release.py`.
-- `README.md` — User-facing verification and timestamping instructions.
+- `.github/` — GitHub Actions workflows and helpers for verification, manifest refresh, and OTS maintenance.
+- `docs/` — Static site assets; `index.html` and `letter.md` track the latest release (synced via scripts).
+- `keys/` — Trusted fingerprint and public key material used for verification.
+- `letter/` — Signed release Markdown, signatures, OTS proofs, and manifest.
+- `scripts/` — Automation helpers for syncing docs, generating manifests, updating metadata, and stamping/verifying.
 
 ## Project conventions
-- Release filenames follow `ASI-Letter-vYYYY.MM.DD.md` with matching `.asc` and `.asc.ots` proofs.
-- The trusted fingerprint is stored in `keys/FINGERPRINT` and must match signatures in `letter/` artifacts.
-- Regenerate derived artifacts (docs, manifest, metadata) via `scripts/release.py` rather than manual edits.
+- Release artifacts follow `ASI-Letter-vYYYY.MM.DD.md` with matching `.asc` and `.asc.ots` files (see `letter/`).
+- The trusted fingerprint in `keys/FINGERPRINT` stays uppercase/no spacing and must match bundled keys and signatures.
+- Regenerate derived artifacts via `python3 scripts/release.py` (or `make release`), not manual edits; favor `--check` before committing.
+
+## Coverage policy
+- Inventory source: `git ls-files` (tracked files only). Generated/vendor exclusions: none tracked; ignored caches under `__pycache__/` and `.venv/` per `.gitignore` are out of scope.
+- Tracked generated outputs (maintained by scripts): `docs/letter.md`, `docs/index.html` release markers, and `letter/RELEASES.json`. Treat release `.asc/.ots` pairs as immutable signed assets.
+- Directory-specific details live in nested AGENTS files; edit within the most specific scope.
+
+## File map (root)
+| filename | what it does | important invariants / gotchas | how it’s used |
+| --- | --- | --- | --- |
+| `AGENTS.md` | This guide plus coverage policy for the repo. | Keep updated as instructions evolve; referenced by nested scopes. | Contributor reference for overall workflows. |
+| `README.md` | User-facing verification instructions and key retrieval steps. | Fingerprint line is auto-synced by workflow; keep content aligned with keys. | Entry point for verifying releases. |
+| `Makefile` | Provides `release` target calling `python3 scripts/release.py`. | No other targets; ensure Python available. | Convenience wrapper for release pipeline. |
+| `.editorconfig` | Enforces LF endings, UTF-8, final newline, trimmed whitespace; Markdown uses 2-space indent. | Apply when editing to avoid lint noise. | Editor tooling configuration. |
+| `.gitattributes` | Normalizes text files to LF via Git. | Preserve BOM handling; keep simple. | Git text normalization. |
+| `.gitignore` | Ignores OS cruft, temp files, Python caches/venv, decoded OTS proofs, and `docs/index.html.tmp`. | Do not rely on ignored outputs for release assets. | Keeps working tree clean. |
+| `.github/` | CI workflows and helper scripts (see `.github/AGENTS.md`). | Respect concurrency/groups and permissions. | Automation entrypoints. |
+| `docs/` | Static site assets for the letter (see `docs/AGENTS.md`). | `letter.md` and release markers are generated by scripts. | Published site content. |
+| `keys/` | Trusted fingerprint and public key (see `keys/AGENTS.md`). | Avoid manual formatting changes. | Verification inputs. |
+| `letter/` | Signed release Markdown, signatures, proofs, and manifest (see `letter/AGENTS.md`). | Treat releases as immutable; manifest generated by scripts. | Source of truth for releases. |
+| `scripts/` | Automation helpers for release/verification tasks (see `scripts/AGENTS.md`). | Many support `--check`; some scripts expect GPG installed. | Local + CI tooling. |
 
 ## Codex operating guidance
-- Edit policy: AGENTS files and documentation may be updated; avoid modifying signed letter artifacts, manifest outputs, or keys unless performing an intentional release/update.
-- Validation: prefer `python3 scripts/release.py --check` and `bash scripts/verify-clearsign.sh` before committing doc changes.
-- Common pitfalls: manual edits to generated assets (`docs/letter.md`, `letter/RELEASES.json`, `.asc/.ots` files) will be overwritten or break signature checks; keep fingerprint formatting intact (uppercase hex, no spaces in raw file).
-
+- Edit policy: Safe to update AGENTS/docs; avoid modifying signed releases, manifest outputs, or key material except during intentional release processes.
+- Validation: Prefer `python3 scripts/release.py --check` plus `bash scripts/verify-clearsign.sh` before committing. Use CI workflows as reference for automation behavior.
+- Common failure modes: manual edits to generated files (`docs/letter.md`, `docs/index.html` markers, `letter/RELEASES.json`), altering fingerprint formatting, or changing release artifacts without regenerating signatures/proofs.
