@@ -511,11 +511,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: .github/scripts/wait_for_pages_idle.sh
 
+      - name: Regenerate release artifacts to capture upgraded proof
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnupg
+          python3 scripts/release.py
+          python3 scripts/release.py --check
+
       - name: Commit upgraded proof and refreshed footer
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore(ots): upgrade proof + refresh status"
           file_pattern: |
             docs/index.html
+            docs/letter.md
+            letter/RELEASES.json
             letter/*.ots
-
