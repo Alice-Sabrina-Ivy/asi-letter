@@ -47,9 +47,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
+      - name: Check for stale release artifacts
+        id: release_check
+        continue-on-error: true
+        run: |
+          python3 scripts/release.py --check
       - name: Regenerate release artifacts
+        if: steps.release_check.outcome == 'failure'
         run: |
           python3 scripts/release.py
+      - name: Verify release artifacts are clean
+        run: |
           python3 scripts/release.py --check
       - name: Wait for GitHub Pages to be idle
         env:
