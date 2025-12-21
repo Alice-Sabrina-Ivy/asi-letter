@@ -1,11 +1,31 @@
 {
   "schema": "asi-letter/releases#2",
-  "updated": "2025-12-20T00:44:56Z",
+  "updated": "2025-12-21T05:43:53Z",
   "key": {
     "fingerprint_current": "2C101FA70F42F93052F82FC755387365B7949796",
     "path": "keys/alice-asi-publickey.asc"
   },
   "releases": [
+    {
+      "version": "2025.12.20",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2025.12.20.md",
+          "size": 94743,
+          "sha256": "97a599b6f3b6b828d89c7fbeba3f2ce576e0ee5c496972618f5db3a5ceb77cc2"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2025.12.20.md.asc",
+          "size": 95344,
+          "sha256": "fb2e507ddf953b09312c7cc6ef953f9d17517168e2d38734458ee79115cb6bb0"
+        },
+        "ots": null
+      }
+    },
     {
       "version": "2025.12.18",
       "signer": {
