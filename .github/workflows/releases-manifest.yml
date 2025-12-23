@@ -47,27 +47,35 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Check for stale release artifacts
-        id: release_check
-        continue-on-error: true
-        run: |
-          python3 scripts/release.py --check
       - name: Regenerate release artifacts
-        if: steps.release_check.outcome == 'failure'
         run: |
           python3 scripts/release.py
       - name: Verify release artifacts are clean
         run: |
           python3 scripts/release.py --check
+      - name: Show working tree changes
+        run: git status --short
       - name: Wait for GitHub Pages to be idle
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: .github/scripts/wait_for_pages_idle.sh
-      - uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          branch: ${{ env.TARGET_BRANCH }}
-          commit_message: "chore(manifest): refresh release assets [manifest-auto]"
-          file_pattern: |
-            letter/RELEASES.json
-            docs/letter.md
-            docs/index.html
+      - name: Commit refreshed artifacts
+        env:
+          TARGET_BRANCH: ${{ env.TARGET_BRANCH }}
+        run: |
+          set -euo pipefail
+          branch="${TARGET_BRANCH:-${GITHUB_REF_NAME:-${GITHUB_REF#refs/heads/}}}"
+          if [[ -z "${branch}" ]]; then
+            branch="main"
+          fi
+          if git status --porcelain | grep -Eq '^(A |M |D )'; then
+            echo "Changes detected:"
+            git status --short
+            git add -A letter/RELEASES.json docs/letter.md docs/index.html
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore(manifest): refresh release assets [manifest-auto]"
+            git push origin "HEAD:${branch}"
+          else
+            echo "No release artifacts changed; skipping commit."
+          fi
