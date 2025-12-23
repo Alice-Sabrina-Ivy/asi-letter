@@ -53,8 +53,16 @@ jobs:
       - name: Verify release artifacts are clean
         run: |
           python3 scripts/release.py --check
+      - name: Refresh site version metadata from manifest
+        run: |
+          python3 scripts/update_version_metadata.py --manifest letter/RELEASES.json docs/index.html
+      - name: Validate site version metadata
+        run: |
+          python3 scripts/update_version_metadata.py --manifest letter/RELEASES.json --check docs/index.html
       - name: Show working tree changes
-        run: git status --short
+        run: |
+          git status --short
+          git diff --stat -- letter/RELEASES.json docs/letter.md docs/index.html
       - name: Wait for GitHub Pages to be idle
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -68,7 +76,9 @@ jobs:
           if [[ -z "${branch}" ]]; then
             branch="main"
           fi
-          if git status --porcelain | grep -Eq '^(A |M |D )'; then
+          dirty=0
+          git diff --quiet -- letter/RELEASES.json docs/letter.md docs/index.html || dirty=1
+          if [[ "${dirty}" == "1" ]]; then
             echo "Changes detected:"
             git status --short
             git add -A letter/RELEASES.json docs/letter.md docs/index.html
