@@ -53,6 +53,8 @@ jobs:
       - name: Verify release artifacts are clean
         run: |
           python3 scripts/release.py --check
+      - name: Show working tree changes
+        run: git status --short
       - name: Wait for GitHub Pages to be idle
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -62,6 +64,10 @@ jobs:
           TARGET_BRANCH: ${{ env.TARGET_BRANCH }}
         run: |
           set -euo pipefail
+          branch="${TARGET_BRANCH:-${GITHUB_REF_NAME:-${GITHUB_REF#refs/heads/}}}"
+          if [[ -z "${branch}" ]]; then
+            branch="main"
+          fi
           if git status --porcelain | grep -Eq '^(A |M |D )'; then
             echo "Changes detected:"
             git status --short
@@ -69,6 +75,7 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git commit -m "chore(manifest): refresh release assets [manifest-auto]"
+            git push origin "HEAD:${branch}"
             git push origin "${TARGET_BRANCH}"
           else
             echo "No release artifacts changed; skipping commit."
