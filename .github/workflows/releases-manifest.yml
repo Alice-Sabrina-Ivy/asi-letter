@@ -76,6 +76,7 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git commit -m "chore(manifest): refresh release assets [manifest-auto]"
             git push origin "HEAD:${branch}"
+            git push origin "${TARGET_BRANCH}"
           else
             echo "No release artifacts changed; skipping commit."
           fi
