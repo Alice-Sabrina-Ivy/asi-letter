@@ -53,8 +53,6 @@ jobs:
       - name: Verify release artifacts are clean
         run: |
           python3 scripts/release.py --check
-      - name: Show working tree changes
-        run: git status --short
       - name: Wait for GitHub Pages to be idle
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -79,3 +77,6 @@ jobs:
           else
             echo "No release artifacts changed; skipping commit."
           fi
+      - name: Show working tree changes
+        if: failure()
+        run: git status --short
