@@ -57,11 +57,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: .github/scripts/wait_for_pages_idle.sh
-      - uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          branch: ${{ env.TARGET_BRANCH }}
-          commit_message: "chore(manifest): refresh release assets [manifest-auto]"
-          file_pattern: |
-            letter/RELEASES.json
-            docs/letter.md
-            docs/index.html
+      - name: Commit refreshed artifacts
+        env:
+          TARGET_BRANCH: ${{ env.TARGET_BRANCH }}
+        run: |
+          set -euo pipefail
+          if git status --porcelain | grep -Eq '^(A |M |D )'; then
+            echo "Changes detected:"
+            git status --short
+            git add -A letter/RELEASES.json docs/letter.md docs/index.html
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore(manifest): refresh release assets [manifest-auto]"
+            git push origin "${TARGET_BRANCH}"
+          else
+            echo "No release artifacts changed; skipping commit."
+          fi
