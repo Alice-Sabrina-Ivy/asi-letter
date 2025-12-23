@@ -1,6 +1,6 @@
 {
   "schema": "asi-letter/releases#2",
-  "updated": "2025-12-23T15:09:58Z",
+  "updated": "2025-12-23T15:11:45Z",
   "key": {
     "fingerprint_current": "2C101FA70F42F93052F82FC755387365B7949796",
     "path": "keys/alice-asi-publickey.asc"
@@ -23,7 +23,12 @@
           "size": 94180,
           "sha256": "8fb336f1af5e759c86e853fcdfc04ae6a16720a18b5cd81ac9ab5db3fe06029d"
         },
-        "ots": null
+        "ots": {
+          "path": "letter/ASI-Letter-v2025.12.23.md.asc.ots",
+          "size": 805,
+          "sha256": "e9d587cf8fc00e7a37d34f2a288d79f1e15b89d78e1d0976088151240efa707d",
+          "encoding": "binary"
+        }
       }
     },
     {
