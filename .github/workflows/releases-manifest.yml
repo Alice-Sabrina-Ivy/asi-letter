@@ -53,6 +53,12 @@ jobs:
       - name: Verify release artifacts are clean
         run: |
           python3 scripts/release.py --check
+      - name: Refresh site version metadata from manifest
+        run: |
+          python3 scripts/update_version_metadata.py --manifest letter/RELEASES.json docs/index.html
+      - name: Validate site version metadata
+        run: |
+          python3 scripts/update_version_metadata.py --manifest letter/RELEASES.json --check docs/index.html
       - name: Show working tree changes
         run: |
           git status --short
