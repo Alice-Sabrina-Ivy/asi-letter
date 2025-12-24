@@ -459,7 +459,7 @@ jobs:
                 fi
 
                 if [[ -n "$HEIGHT" ]]; then
-                  STATUS="Bitcoin block <strong>${HEIGHT}</strong> attests the letter existed prior to that block."
+                  STATUS="Bitcoin block <strong>${HEIGHT}</strong> attests this version of the ASI letter existed prior to that block."
                 fi
               else
                 echo "Warning: unable to copy ${TARGET}.ots for inspection" >&2
