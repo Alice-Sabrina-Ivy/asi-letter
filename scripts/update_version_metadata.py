@@ -22,6 +22,10 @@ DEFAULT_MANIFEST = Path("letter/RELEASES.json")
 DEFAULT_TARGETS = (Path("docs/index.html"),)
 
 _VERSION_RX = re.compile(r"\d{4}\.\d{2}\.\d{2}")
+_GOOGLE_SITE_VERIFICATION = "9SLdoDdcbXCFMDwBI_Cx9ZpXR5PC6_WdGCc07_5lXcc"
+_GOOGLE_SITE_META = (
+    f'<meta name="google-site-verification" content="{_GOOGLE_SITE_VERIFICATION}">'
+)
 
 
 @dataclass
@@ -143,9 +147,35 @@ def substitute_version_markers(text: str, version: VersionInfo) -> Tuple[str, in
     return updated, total
 
 
+def ensure_google_site_verification(text: str) -> Tuple[str, int]:
+    if _GOOGLE_SITE_META in text:
+        return text, 0
+
+    charset_match = re.search(
+        r"^(?P<indent>\s*)<meta\s+charset=[^>]+>\s*$",
+        text,
+        flags=re.MULTILINE | re.IGNORECASE,
+    )
+    if charset_match:
+        indent = charset_match.group("indent")
+        replacement = f"{charset_match.group(0)}\n{indent}{_GOOGLE_SITE_META}"
+        updated = text[: charset_match.start()] + replacement + text[charset_match.end() :]
+        return updated, 1
+
+    head_match = re.search(r"^(?P<indent>\s*)<head>\s*$", text, flags=re.MULTILINE | re.IGNORECASE)
+    if head_match:
+        indent = head_match.group("indent") + "  "
+        insertion = f"{head_match.group(0)}\n{indent}{_GOOGLE_SITE_META}"
+        updated = text[: head_match.start()] + insertion + text[head_match.end() :]
+        return updated, 1
+
+    return text, 0
+
+
 def process_file(path: Path, version: VersionInfo, check_only: bool, allow_missing: bool) -> bool:
     text = path.read_text(encoding="utf-8")
     updated, matches = substitute_version_markers(text, version)
+    updated, meta_added = ensure_google_site_verification(updated)
     if matches == 0:
         message = (
             f"No version markers found in {path}. Add a release-version marker or "
@@ -156,7 +186,7 @@ def process_file(path: Path, version: VersionInfo, check_only: bool, allow_missi
             return False
         raise SystemExit(message)
 
-    if updated != text:
+    if updated != text or meta_added:
         if check_only:
             return True
         path.write_text(updated, encoding="utf-8")
