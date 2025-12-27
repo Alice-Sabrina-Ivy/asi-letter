@@ -19,7 +19,7 @@ You can verify any pasted ASI Letter release that includes a PGP clear‑signatu
 (the block starting with `-----BEGIN PGP SIGNED MESSAGE-----` and ending with
 `-----END PGP SIGNATURE-----`).
 
-**Fingerprint to trust:** `﻿2C1 01FA 70F4 2F93 052F  82FC 7553 8736 5B79 4979 6`
+**Fingerprint to trust:** `2C10 1FA7 0F42 F930 52F8  2FC7 5538 7365 B794 9796`
 
 ### 1) Install GnuPG (gpg)
 - **Windows:** https://gpg4win.org  
