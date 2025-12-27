@@ -1,5 +1,5 @@
 <p align="center">
- <img src="docs/assets/asi-handshake-social-gen-1280x640.png" alt="Human–ASI handshake at sunrise" width="100%">
+ <img src="docs/assets/asi-handshake-social-gen-1280x640.jpg" alt="Human–ASI handshake at sunrise" width="100%">
 </p>
 
 # ASI Letter
