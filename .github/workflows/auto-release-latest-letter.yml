@@ -1,0 +1,113 @@
+name: auto-release-latest-letter
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      # RELEASES.json is updated by releases-manifest after new letter artifacts land.
+      - "letter/RELEASES.json"
+      # Include these so manual edits to letter assets can also trigger a release.
+      - "letter/ASI-Letter-v*.md"
+      - "letter/ASI-Letter-v*.md.asc"
+      - "letter/ASI-Letter-v*.md.asc.ots"
+      - "keys/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read latest release metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="$(jq -r '.releases[0].version' letter/RELEASES.json)"
+          md_path="$(jq -r '.releases[0].files.md.path' letter/RELEASES.json)"
+          asc_path="$(jq -r '.releases[0].files.asc.path' letter/RELEASES.json)"
+          ots_path="$(jq -r '.releases[0].files.ots.path' letter/RELEASES.json)"
+
+          tag="letter-v${version}"
+
+          # Guard: only publish a release when the timestamp proof exists.
+          ready="true"
+          if [[ -z "${version}" || "${version}" == "null" ]]; then
+            ready="false"
+          fi
+          if [[ -z "${md_path}" || "${md_path}" == "null" || ! -f "${md_path}" ]]; then
+            ready="false"
+          fi
+          if [[ -z "${asc_path}" || "${asc_path}" == "null" || ! -f "${asc_path}" ]]; then
+            ready="false"
+          fi
+          if [[ -z "${ots_path}" || "${ots_path}" == "null" || ! -f "${ots_path}" ]]; then
+            ready="false"
+          fi
+
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "md_path=${md_path}" >> "$GITHUB_OUTPUT"
+          echo "asc_path=${asc_path}" >> "$GITHUB_OUTPUT"
+          echo "ots_path=${ots_path}" >> "$GITHUB_OUTPUT"
+          echo "ready=${ready}" >> "$GITHUB_OUTPUT"
+
+      - name: Build release notes
+        if: steps.meta.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          fp="$(tr -d '\r\n' < keys/FINGERPRINT || true)"
+          cat > release-notes.md <<EOF
+          This is an automated “latest recommended” snapshot of the ASI Letter.
+
+          ## Verify
+          - Public key: keys/alice-asi-publickey.asc
+          - Fingerprint: ${fp}
+          - Signed artifact: \`${{ steps.meta.outputs.asc_path }}\`
+          - Timestamp proof (OpenTimestamps): \`${{ steps.meta.outputs.ots_path }}\`
+
+          ## Files attached
+          - Letter (markdown): \`${{ steps.meta.outputs.md_path }}\`
+          - Letter (signed): \`${{ steps.meta.outputs.asc_path }}\`
+          - Timestamp proof: \`${{ steps.meta.outputs.ots_path }}\`
+          - Releases manifest: \`letter/RELEASES.json\`
+          EOF
+
+      - name: Skip (timestamp proof not ready)
+        if: steps.meta.outputs.ready != 'true'
+        shell: bash
+        run: |
+          echo "Not creating a release: latest entry is missing files and/or .ots proof (yet)."
+
+      - name: Create GitHub Release if missing (mark as Latest)
+        if: steps.meta.outputs.ready == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.meta.outputs.tag }}"
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; skipping."
+            exit 0
+          fi
+
+          gh release create "$tag" \
+            "${{ steps.meta.outputs.md_path }}" \
+            "${{ steps.meta.outputs.asc_path }}" \
+            "${{ steps.meta.outputs.ots_path }}" \
+            "letter/RELEASES.json" \
+            "keys/alice-asi-publickey.asc" \
+            "keys/FINGERPRINT" \
+            --title "ASI Letter — ${{ steps.meta.outputs.version }}" \
+            --notes-file release-notes.md \
+            --latest
