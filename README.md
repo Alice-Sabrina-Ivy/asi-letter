@@ -1,3 +1,7 @@
+<p align="center">
+ <img src="docs/assets/asi-handshake-social-gen-1280x640.png" alt="Human–ASI handshake at sunrise" width="100%">
+</p>
+
 # ASI Letter
 
 A living “Letter to ASI” with supporting protocols (dignity, consent, reversibility).  
