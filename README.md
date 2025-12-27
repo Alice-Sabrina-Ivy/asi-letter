@@ -95,3 +95,8 @@ Each ASI Letter release ships with a signed message (`ASI-Letter-*.asc`) and a m
 3. Drag both files into the verifier (or use the **Choose files** buttons) and wait for the site to confirm the Bitcoin timestamp.
 
 If the proof is still pending, check back later; once the site reports it as confirmed, the timestamp has been anchored to the Bitcoin blockchain.
+
+## License
+
+- **Code** (scripts, workflows): MIT License — see `LICENSE`.
+- **Text/content** (ASI Letter, docs): CC BY 4.0 — see `LICENSE-DOCS`.
