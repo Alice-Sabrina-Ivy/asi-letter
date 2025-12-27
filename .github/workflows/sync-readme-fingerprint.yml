@@ -20,7 +20,7 @@ jobs:
       - name: Update README fingerprint line
         shell: bash
         run: |
-          RAW=$(tr -d " \r\n" < keys/FINGERPRINT | tr "[:lower:]" "[:upper:]")
+          RAW=$(python3 -c "from pathlib import Path; text = Path('keys/FINGERPRINT').read_text(encoding='utf-8-sig'); print(''.join(text.split()).upper())")
           SPACED=$(echo "$RAW" | sed -E "s/.{4}/& /g;s/ $//")
           DOUBLE=$(echo "$SPACED" | sed -E "s/^(([^ ]+ ){5})/\1 /")
           sed -E -i "s|(\*\*Fingerprint to trust:\*\*) \`[A-F0-9 ]+\`|\1 \`$DOUBLE\`|g" README.md
