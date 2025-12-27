@@ -33,6 +33,8 @@
 | --- | --- | --- | --- |
 | `AGENTS.md` | This guide plus coverage policy for the repo. | Keep updated as instructions evolve; referenced by nested scopes. | Contributor reference for overall workflows. |
 | `README.md` | User-facing verification instructions and key retrieval steps. | Fingerprint line is auto-synced by workflow; keep content aligned with keys. | Entry point for verifying releases. |
+| `LICENSE` | License for source code and scripts. | Keep content synced to authoritative licensing terms. | Defines reuse terms for code in the repo. |
+| `LICENSE-DOCS` | License for documentation and published letter content. | Keep content synced to authoritative licensing terms. | Defines reuse terms for docs and release text. |
 | `Makefile` | Provides `release` target calling `python3 scripts/release.py`. | No other targets; ensure Python available. | Convenience wrapper for release pipeline. |
 | `.editorconfig` | Enforces LF endings, UTF-8, final newline, trimmed whitespace; Markdown uses 2-space indent. | Apply when editing to avoid lint noise. | Editor tooling configuration. |
 | `.gitattributes` | Normalizes text files to LF via Git. | Preserve BOM handling; keep simple. | Git text normalization. |
