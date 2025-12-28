@@ -9,7 +9,7 @@ Canonical repository: https://github.com/Alice-Sabrina-Ivy/asi-letter
 
 - **Live site:** https://alice-sabrina-ivy.github.io/asi-letter/
 - **Public keys:** https://github.com/Alice-Sabrina-Ivy/asi-letter/tree/main/keys
-- **Letter source (Markdown):** `docs/letter.md`
+- **Latest ASI Letter (Markdown):** https://github.com/Alice-Sabrina-Ivy/asi-letter/blob/main/docs/letter.md
 
 ---
 
