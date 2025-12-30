@@ -205,6 +205,15 @@ def insert_cta(root: ET.Element) -> None:
             if child.tag == "footer" and child.get("class") == "signature":
                 parent.insert(index + 1, cta_element)
                 return
+def insert_cta(root: ET.Element) -> None:
+    cta_element = ET.fromstring(CTA_HTML)
+    signature = root.find(".//footer[@class='signature']")
+    if signature is not None:
+        children = list(root)
+        if signature in children:
+            index = children.index(signature)
+            root.insert(index + 1, cta_element)
+            return
     root.append(cta_element)
 
 
