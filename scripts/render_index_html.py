@@ -22,6 +22,24 @@ DEFAULT_MARKDOWN = Path("docs/letter.md")
 RENDER_START = "<!-- render-letter:start -->"
 RENDER_END = "<!-- render-letter:end -->"
 REPO_URL = "https://github.com/Alice-Sabrina-Ivy/asi-letter"
+LETTER_URL = f"{REPO_URL}/blob/main/docs/letter.md"
+KEYS_URL = f"{REPO_URL}/tree/main/keys"
+CTA_HTML = f"""
+<nav class="cta-bar" id="cta-bar">
+  <a class="btn btn-primary" id="btn-repo" href="{REPO_URL}" target="_blank" rel="noopener" aria-label="Open repository on GitHub">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.64 0 8.13c0 3.6 2.29 6.65 5.47 7.73.4.08.55-.18.55-.39 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.5-2.69-.96-.09-.23-.48-.96-.82-1.15-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.53.28-.87.51-1.07-1.78-.2-3.64-.91-3.64-4.05 0-.9.31-1.64.82-2.22-.08-.2-.36-1.02.08-2.12 0 0 .67-.22 2.2.85.64-.18 1.33-.27 2.01-.27.68 0 1.37.09 2.01.27 1.53-1.07 2.2-.85 2.2-.85.44 1.1.16 1.92.08 2.12.51.58.82 1.32.82 2.22 0 3.15-1.87 3.85-3.65 4.05.29.26.54.77.54 1.55 0 1.12-.01 2.03-.01 2.31 0 .21.15.47.55.39A8.06 8.06 0 0 0 16 8.13C16 3.64 12.42 0 8 0Z" fill="currentColor"/></svg>
+    <span>Canonical source</span>
+  </a>
+  <a class="btn" id="btn-letter" href="{LETTER_URL}" target="_blank" rel="noopener">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1h5l4 4v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1Zm5 1.5V5h3.5L9 2.5ZM5 7h6v1.5H5V7Zm0 3h6v1.5H5V10Z" fill="currentColor"/></svg>
+    <span>Open letter.md</span>
+  </a>
+  <a class="btn" id="btn-verify" href="{KEYS_URL}" target="_blank" rel="noopener" title="View public keys">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l7 3v6c0 5-3.1 9.4-7 11-3.9-1.6-7-6-7-11V5l7-3zm0 2.2L7 5.2v5.5c0 4.1 2.6 7.9 5 9.2 2.4-1.3 5-5.1 5-9.2V5.2l-5-1zm4.3 5.6l-5 5a1 1 0 0 1-1.4 0l-2-2 1.4-1.4 1.3 1.3 4.3-4.3 1.4 1.4z" fill="currentColor"/></svg>
+    <span>Public Keys</span>
+  </a>
+</nav>
+""".strip()
 
 
 @dataclass(frozen=True)
@@ -168,6 +186,18 @@ def add_link_attributes(root: ET.Element) -> None:
             anchor.set("rel", " ".join(sorted(rel_tokens)))
 
 
+def insert_cta(root: ET.Element) -> None:
+    cta_element = ET.fromstring(CTA_HTML)
+    signature = root.find(".//footer[@class='signature']")
+    if signature is not None:
+        children = list(root)
+        if signature in children:
+            index = children.index(signature)
+            root.insert(index + 1, cta_element)
+            return
+    root.append(cta_element)
+
+
 def render_markdown(markdown_text: str) -> RenderResult:
     markdown = require_markdown()
     html = markdown.markdown(
@@ -179,6 +209,7 @@ def render_markdown(markdown_text: str) -> RenderResult:
     add_link_attributes(root)
     remove_canonical_paragraphs(root)
     signature_found = ensure_signature(root)
+    insert_cta(root)
     rendered = "\n".join(ET.tostring(child, encoding="unicode") for child in list(root))
     return RenderResult(html=rendered, signature_found=signature_found)
 
