@@ -489,14 +489,22 @@ jobs:
 
           STATUS="${STATUS_LINE:-Bitcoin anchoring pending. Proof will update automatically.}"
 
-          {
+          OTS_BLOCK="$(
             printf '%s\n' '<!-- OTS-START -->'
             printf '%s\n' '<section id="timestamp-proof" style="max-width:48rem;margin:2rem auto 0 auto;padding-top:1rem;border-top:1px solid #e5e7eb;text-align:center;font-size:0.95rem;line-height:1.5;">'
             printf '%s\n' '  <h3 style="margin:0 0 .5rem 0;font-size:1.05rem;">Timestamp proof (Bitcoin)</h3>'
             printf '  <p id="ots-line">%s</p>\n' "${STATUS}"
             printf '%s\n' '</section>'
             printf '%s\n' '<!-- OTS-END -->'
-          } >> "$HTML"
+          )"
+
+          if ! perl -0777 -ne 'exit(!(m#</body>#i))' "$HTML"; then
+            echo "Missing </body> tag in $HTML; unable to insert OTS block." >&2
+            exit 1
+          fi
+
+          export OTS_BLOCK
+          perl -0777 -i -pe 'BEGIN { $block = $ENV{OTS_BLOCK} // "" } s#</body>#$block\n</body>#is' "$HTML"
 
       - name: Rebase onto latest ${{ github.ref_name }} before committing
         shell: bash
