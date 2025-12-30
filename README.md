@@ -93,6 +93,10 @@ Each ASI Letter release ships with a signed message (`ASI-Letter-*.asc`) and a m
 1. Download the `.asc` file for the release you care about along with the `.ots` file that has the exact same name (aside from the extension).
 2. Visit [https://opentimestamps.org/](https://opentimestamps.org/).
 3. Drag both files into the verifier (or use the **Choose files** buttons) and wait for the site to confirm the Bitcoin timestamp.
+   - If opentimestamps.org is unavailable, use the OpenTimestamps reference client (a small command-line tool called `ots`).
+     1. Open a terminal.
+     2. Install the tool by running: `pipx install opentimestamps-client` (or `pip install opentimestamps-client`).
+     3. Run the check: `ots verify ASI-Letter-*.asc.ots`.
 
 If the proof is still pending, check back later; once the site reports it as confirmed, the timestamp has been anchored to the Bitcoin blockchain.
 
