@@ -186,6 +186,25 @@ def add_link_attributes(root: ET.Element) -> None:
             anchor.set("rel", " ".join(sorted(rel_tokens)))
 
 
+def remove_existing_cta(root: ET.Element) -> None:
+    for parent in root.iter():
+        for child in list(parent):
+            if child.tag != "nav":
+                continue
+            classes = (child.get("class") or "").split()
+            if "cta-bar" in classes:
+                parent.remove(child)
+
+
+def insert_cta(root: ET.Element) -> None:
+    remove_existing_cta(root)
+    cta_element = ET.fromstring(CTA_HTML)
+    for parent in root.iter():
+        children = list(parent)
+        for index, child in enumerate(children):
+            if child.tag == "footer" and child.get("class") == "signature":
+                parent.insert(index + 1, cta_element)
+                return
 def insert_cta(root: ET.Element) -> None:
     cta_element = ET.fromstring(CTA_HTML)
     signature = root.find(".//footer[@class='signature']")
