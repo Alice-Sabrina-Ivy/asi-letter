@@ -515,6 +515,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gnupg
+          python3 -m pip install --upgrade pip
+          python3 -m pip install markdown
           python3 scripts/release.py
           python3 scripts/release.py --check
 
