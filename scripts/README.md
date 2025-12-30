@@ -12,13 +12,14 @@ the related continuous validation jobs in more detail.
 ### `release.py`
 
 ```
-python3 scripts/release.py [--check|--dry-run] [--skip-sync] [--skip-manifest] [--skip-metadata]
+python3 scripts/release.py [--check|--dry-run] [--skip-sync] [--skip-manifest] [--skip-metadata] [--skip-render]
 ```
 
 * Runs the scripts in the following order, aborting on the first failure:
   1. `sync_docs_with_latest.py`
   2. `gen_releases_manifest.py`
   3. `update_version_metadata.py`
+  4. `render_index_html.py`
 * Pass `--check` or `--dry-run` to forward the read-only mode supported by the
   underlying tools. This is useful in CI or when verifying that the working tree
   is already up to date.
@@ -70,6 +71,17 @@ python3 scripts/update_version_metadata.py [--manifest PATH] [--check] [targets.
 
 `targets` defaults to `docs/index.html`. Passing `--check` reports files that
 require updates without modifying them.
+
+### `render_index_html.py`
+
+Pre-renders `docs/letter.md` into HTML and replaces the content between the
+render markers in `docs/index.html`. This keeps the site layout identical while
+removing the need for client-side JavaScript rendering. Requires the Python
+`markdown` package.
+
+```
+python3 scripts/render_index_html.py [--index PATH] [--markdown PATH] [--check]
+```
 
 ## Signing and verification helpers
 

@@ -50,6 +50,12 @@ STAGES: List[Stage] = [
         skip_flag="skip_metadata",
         help_text="metadata updates",
     ),
+    Stage(
+        name="Render index HTML",
+        script="render_index_html.py",
+        skip_flag="skip_render",
+        help_text="index rendering",
+    ),
 ]
 
 

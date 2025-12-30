@@ -11,7 +11,7 @@
 | filename | what it does | important invariants / gotchas | how it’s used |
 | --- | --- | --- | --- |
 | `AGENTS.md` | This directory guide. | Keep aligned with site asset roles; defer to root policy. | Contributor reference. |
-| `index.html` | Static HTML for the public site with release-version markers, CTA links, styling, and Markdown rendering hook. | Markers (`<!-- release-version -->`, `data-release-version`, title) must match latest release; `update_version_metadata.py` rewrites them. Footer status is updated by OTS workflows. Avoid manual drift from automation expectations. | Served as site entrypoint; updated by release/OTS workflows and metadata script. |
+| `index.html` | Static HTML for the public site with release-version markers, CTA links, styling, and pre-rendered letter content. | Markers (`<!-- release-version -->`, `data-release-version`, title) must match latest release; `update_version_metadata.py` rewrites them. Render markers are updated by `render_index_html.py`. Footer status is updated by OTS workflows. Avoid manual drift from automation expectations. | Served as site entrypoint; updated by release/OTS workflows, metadata, and rendering scripts. |
 | `letter.md` | Markdown copy of the latest signed letter. | Generated/overwritten by `sync_docs_with_latest.py`; keep consistent with `letter/` sources. | Displayed on site; checked by release pipeline for freshness. |
 
 ## Codex operating guidance
