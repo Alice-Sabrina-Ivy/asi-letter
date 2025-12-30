@@ -504,7 +504,7 @@ jobs:
           fi
 
           export OTS_BLOCK
-          perl -0777 -i -pe 'BEGIN { $block = $ENV{OTS_BLOCK} // "" } s#</body>#$block . "\n</body>"#is' "$HTML"
+          perl -0777 -i -pe 'BEGIN { $block = $ENV{OTS_BLOCK} // "" } s#</body>#$block\n</body>#is' "$HTML"
 
       - name: Rebase onto latest ${{ github.ref_name }} before committing
         shell: bash
