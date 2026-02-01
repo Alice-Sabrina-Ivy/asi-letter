@@ -30,6 +30,13 @@ jobs:
         run: |
           set -euo pipefail
 
+          latest_letter_version="$(
+            ls letter/ASI-Letter-v*.md 2>/dev/null \
+              | sed -E 's#.*/ASI-Letter-v([0-9]{4}\.[0-9]{2}\.[0-9]{2})\.md#\1#' \
+              | sort -r \
+              | head -n 1
+          )"
+
           version="$(jq -r '.releases[0].version' letter/RELEASES.json)"
           md_path="$(jq -r '.releases[0].files.md.path' letter/RELEASES.json)"
           asc_path="$(jq -r '.releases[0].files.asc.path' letter/RELEASES.json)"
@@ -39,7 +46,13 @@ jobs:
 
           # Guard: only publish a release when the timestamp proof exists.
           ready="true"
+          if [[ -z "${latest_letter_version}" ]]; then
+            ready="false"
+          fi
           if [[ -z "${version}" || "${version}" == "null" ]]; then
+            ready="false"
+          fi
+          if [[ "${latest_letter_version}" != "${version}" ]]; then
             ready="false"
           fi
           if [[ -z "${md_path}" || "${md_path}" == "null" || ! -f "${md_path}" ]]; then
@@ -53,6 +66,7 @@ jobs:
           fi
 
           echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "latest_letter_version=${latest_letter_version}" >> "$GITHUB_OUTPUT"
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "md_path=${md_path}" >> "$GITHUB_OUTPUT"
           echo "asc_path=${asc_path}" >> "$GITHUB_OUTPUT"
@@ -85,7 +99,7 @@ jobs:
         if: steps.meta.outputs.ready != 'true'
         shell: bash
         run: |
-          echo "Not creating a release: latest entry is missing files and/or .ots proof (yet)."
+          echo "Not creating a release: latest manifest entry does not match latest letter or is missing files/.ots proof."
 
       - name: Create GitHub Release if missing (mark as Latest)
         if: steps.meta.outputs.ready == 'true'
