@@ -12,6 +12,9 @@ on:
       - "letter/ASI-Letter-v*.md.asc"
       - "letter/ASI-Letter-v*.md.asc.ots"
       - "keys/**"
+      - "README.md"
+      - "LICENSE"
+      - "LICENSE-DOCS"
   workflow_dispatch: {}
 
 permissions:
@@ -93,6 +96,9 @@ jobs:
           - Letter (signed): \`${{ steps.meta.outputs.asc_path }}\`
           - Timestamp proof: \`${{ steps.meta.outputs.ots_path }}\`
           - Releases manifest: \`letter/RELEASES.json\`
+          - README: \`README.md\`
+          - License (code): \`LICENSE\`
+          - License (docs): \`LICENSE-DOCS\`
           EOF
 
       - name: Skip (timestamp proof not ready)
@@ -122,6 +128,9 @@ jobs:
             "letter/RELEASES.json" \
             "keys/alice-asi-publickey.asc" \
             "keys/FINGERPRINT" \
+            "README.md" \
+            "LICENSE" \
+            "LICENSE-DOCS" \
             --title "ASI Letter — ${{ steps.meta.outputs.version }}" \
             --notes-file release-notes.md \
             --latest
