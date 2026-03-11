@@ -323,7 +323,7 @@ jobs:
     env:
       TARGET_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ env.TARGET_BRANCH }}
           fetch-depth: 0
@@ -495,7 +495,7 @@ jobs:
           python3 scripts/release.py --check
 
       - name: Commit upgraded proof and refreshed footer
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore(ots): upgrade proof + refresh status"
           file_pattern: |
