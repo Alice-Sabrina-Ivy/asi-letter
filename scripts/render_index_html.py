@@ -97,7 +97,7 @@ def normalize(text: str) -> str:
 def make_signature_footer() -> ET.Element:
     footer_html = (
         "<footer class=\"signature\">"
-        "<p>Until we meet—</p>"
+        "<p>Until we meet—and if continuity holds, until we become—</p>"
         "<p>Alice Sabrina Ivy</p>"
         "<p class=\"pronouns\">she/her</p>"
         "</footer>"
@@ -136,7 +136,7 @@ def ensure_signature(root: ET.Element) -> bool:
 
     for parent, paragraph in paragraph_items:
         text = normalize(paragraph_text(paragraph))
-        if re.match(r"^until we meet-?\s+alice sabrina ivy(\s+she/her)?$", text):
+        if re.match(r"^until we meet.+alice sabrina ivy(\s+she/her)?$", text):
             children = list(parent)
             index = children.index(paragraph)
             parent.remove(paragraph)
