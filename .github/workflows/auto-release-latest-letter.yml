@@ -5,21 +5,20 @@ on:
     branches:
       - main
     paths:
-      # RELEASES.json is updated by releases-manifest after new letter artifacts land.
-      - "letter/RELEASES.json"
-      # Include these so manual edits to letter assets can also trigger a release.
-      - "letter/ASI-Letter-v*.md"
-      - "letter/ASI-Letter-v*.md.asc"
-      - "letter/ASI-Letter-v*.md.asc.ots"
+      # Only non-letter assets that aren't part of the automated workflow chain.
+      # Letter artifacts flow through: ots-stamp → releases-manifest → ots-upgrade,
+      # and this workflow triggers on ots-upgrade completion (the final step).
       - "keys/**"
       - "README.md"
       - "LICENSE"
       - "LICENSE-DOCS"
   # Commits made by Actions (GITHUB_TOKEN) don't trigger push events, so we
-  # must also listen for the upstream workflows that update letter artifacts.
+  # listen for the final workflow in the chain (ots-upgrade) to avoid redundant
+  # runs.  Previously this also listed releases-manifest, but since ots-upgrade
+  # is triggered by releases-manifest, that caused auto-release to fire twice
+  # per release (once for the intermediate step, once for the final step).
   workflow_run:
     workflows:
-      - releases-manifest
       - ots-upgrade
     types:
       - completed
