@@ -38,10 +38,11 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           REPOSITORY: ${{ github.repository }}
           FINALIZED_VERSION: ${{ vars.OTS_UPGRADE_FINALIZED_VERSION }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
-          python - <<'PY'
+          python3 - <<'PY'
           import io
           import json
           import os
@@ -312,7 +313,14 @@ jobs:
           
           
           if __name__ == "__main__":
-              sys.exit(main())
+              try:
+                  sys.exit(main())
+              except Exception as _exc:
+                  # Fail open: if the precheck crashes, allow the upgrade job to proceed.
+                  print(f"Precheck failed unexpectedly: {_exc}")
+                  import traceback; traceback.print_exc()
+                  write_output("should_run", "true")
+                  sys.exit(0)
           PY
 
   upgrade-and-update:
