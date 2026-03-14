@@ -27,7 +27,7 @@ jobs:
       - name: Determine latest OTS proof
         id: latest-ots
         run: |
-          set -eo pipefail
+          set -euo pipefail
           python scripts/find_latest_ots.py letter >> "$GITHUB_OUTPUT"
 
       - name: Show OTS info/verify (before)
