@@ -158,3 +158,20 @@ jobs:
               --notes-file release-notes.md \
               --latest
           fi
+
+      - name: Remove old GitHub Releases
+        if: steps.meta.outputs.ready == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          current_tag="${{ steps.meta.outputs.tag }}"
+
+          # List all releases and delete any that aren't the current one.
+          gh release list --limit 100 --json tagName -q '.[].tagName' | while read -r old_tag; do
+            if [[ "$old_tag" != "$current_tag" ]]; then
+              echo "Deleting old release: $old_tag"
+              gh release delete "$old_tag" --yes --cleanup-tag || true
+            fi
+          done
