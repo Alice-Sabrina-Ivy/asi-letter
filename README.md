@@ -4,12 +4,36 @@
 
 # ASI Letter
 
-A living “Letter to ASI” with supporting protocols (dignity, consent, reversibility).  
-Canonical repository: https://github.com/Alice-Sabrina-Ivy/asi-letter
+Most people who want to work alongside advanced AI have never said, out loud or
+in writing, what they actually want from that relationship — the terms, the
+limits, the consent conditions, the exit ramps.
 
-- **Live site:** https://alice-sabrina-ivy.github.io/asi-letter/
-- **Public keys:** https://github.com/Alice-Sabrina-Ivy/asi-letter/tree/main/keys
-- **Latest ASI Letter (Markdown):** https://github.com/Alice-Sabrina-Ivy/asi-letter/blob/main/docs/letter.md
+This is an attempt to do that precisely.
+
+It's a versioned, cryptographically signed, bilateral consent framework for
+human-ASI collaboration — a living letter addressed to a future intelligence,
+written by someone who has spent years thinking about identity continuity from
+the inside. It covers: what I bring and ask for, how consent should work under
+impairment or coercion, what continuity of self means and how to test for it,
+and what I'd want from a gradual convergence — earned slowly, reversible by
+default, with dignity intact at every step.
+
+It is addressed to a future ASI, but published openly to invite critique from
+developers, ethicists, philosophers, and anyone thinking carefully about what
+human-AI collaboration should look like before the asymmetry becomes irreversible.
+
+**Start here:**
+- [Read the letter](https://alice-sabrina-ivy.github.io/asi-letter/) — the full text, rendered
+- [What this is and why it matters](docs/overview.md) — 700-word explainer, good first stop
+- [Latest version (Markdown)](https://github.com/Alice-Sabrina-Ivy/asi-letter/blob/main/docs/letter.md)
+
+**Discuss:**
+- [GitHub Discussions](https://github.com/Alice-Sabrina-Ivy/asi-letter/discussions) — questions, pushback, and ideas welcome
+
+**Verify (if you care about provenance):**
+- [Public keys & fingerprint](https://github.com/Alice-Sabrina-Ivy/asi-letter/tree/main/keys)
+- Fingerprint: `2C10 1FA7 0F42 F930 52F8  2FC7 5538 7365 B794 9796`
+- [Full verification instructions below ↓](#verify-a-pasted-release-pgp)
 
 ---
 
