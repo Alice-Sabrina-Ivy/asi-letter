@@ -24,7 +24,7 @@ human-AI collaboration should look like before the asymmetry becomes irreversibl
 
 **Start here:**
 - [Read the letter](https://alice-sabrina-ivy.github.io/asi-letter/) — the full text, rendered
-- [What this is and why it matters](docs/overview.html) — 700-word explainer, good first stop
+- [What this is and why it matters](https://alice-sabrina-ivy.github.io/asi-letter/overview.html) — 700-word explainer, good first stop
 
 **Discuss:**
 - [GitHub Discussions](https://github.com/Alice-Sabrina-Ivy/asi-letter/discussions) — questions, pushback, and ideas welcome
