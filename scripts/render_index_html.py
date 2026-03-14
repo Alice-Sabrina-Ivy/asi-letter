@@ -217,8 +217,30 @@ def insert_cta(root: ET.Element) -> None:
     root.append(cta_element)
 
 
+def ensure_blank_line_before_lists(text: str) -> str:
+    """Insert a blank line before list items that immediately follow a non-list line.
+
+    Python-Markdown requires a blank line before the start of a list when it
+    follows a paragraph; without it the list markers are rendered as inline text.
+    """
+    lines = text.split("\n")
+    result: list[str] = []
+    for i, line in enumerate(lines):
+        if (
+            i > 0
+            and re.match(r"^[ \t]*[-*+]\s", line)
+            and result
+            and result[-1].strip()
+            and not re.match(r"^[ \t]*[-*+]\s", result[-1])
+        ):
+            result.append("")
+        result.append(line)
+    return "\n".join(result)
+
+
 def render_markdown(markdown_text: str) -> RenderResult:
     markdown = require_markdown()
+    markdown_text = ensure_blank_line_before_lists(markdown_text)
     html = markdown.markdown(
         markdown_text,
         extensions=["extra", "sane_lists", "tables"],
