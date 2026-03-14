@@ -70,6 +70,7 @@ jobs:
       - name: Wait for GitHub Pages to be idle
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WAIT_FOR_PAGES_COMMIT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
         run: .github/scripts/wait_for_pages_idle.sh
       - name: Commit refreshed artifacts
         env:
