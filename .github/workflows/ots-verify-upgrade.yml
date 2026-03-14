@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: letter-artifacts-${{ github.ref }}
+  group: letter-artifacts-${{ github.ref_name }}
   cancel-in-progress: false
 
 permissions:
