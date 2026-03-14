@@ -19,7 +19,14 @@ fi
 OWNER="${OWNER_REPO%%/*}"
 REPO="${OWNER_REPO##*/}"
 BRANCH="${WAIT_FOR_PAGES_BRANCH:-${GITHUB_REF_NAME:-main}}"
+DEFAULT_BRANCH="${WAIT_FOR_PAGES_DEFAULT_BRANCH:-main}"
 TARGET_WORKFLOW="${WAIT_FOR_PAGES_WORKFLOW:-pages build and deployment}"
+
+# Pages only deploys from the default branch; skip waiting on other branches.
+if [[ "$BRANCH" != "$DEFAULT_BRANCH" ]]; then
+  echo "Branch '${BRANCH}' is not the Pages source branch ('${DEFAULT_BRANCH}'); skipping wait."
+  exit 0
+fi
 TARGET_SHA="${WAIT_FOR_PAGES_COMMIT:-${GITHUB_SHA:-}}"
 SLEEP_SECONDS="${WAIT_FOR_PAGES_SLEEP:-10}"
 TIMEOUT_SECONDS="${WAIT_FOR_PAGES_TIMEOUT:-600}"
