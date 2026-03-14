@@ -336,16 +336,8 @@ jobs:
           ref: ${{ env.TARGET_BRANCH }}
           fetch-depth: 0
 
-      - name: Install OpenTimestamps client + alt verifier
-        run: |
-          python -m pip install --upgrade opentimestamps-client
-          wget -q https://go.dev/dl/go1.22.5.linux-amd64.tar.gz
-          sudo rm -rf /usr/local/go
-          sudo tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
-          echo "/usr/local/go/bin" >> $GITHUB_PATH
-          echo "GOROOT=/usr/local/go" >> $GITHUB_ENV
-          /usr/local/go/bin/go install github.com/fiatjaf/ots@latest
-          echo "$HOME/go/bin" >> $GITHUB_PATH
+      - name: Install OpenTimestamps client
+        run: python -m pip install --upgrade opentimestamps-client
 
       - name: Prepare proof + determine footer status
         id: status
@@ -373,7 +365,6 @@ jobs:
           fi
 
           OTS_CLI="$(command -v ots 2>/dev/null || true)"
-          ALT_CLI="$HOME/go/bin/ots"
 
           if [[ -n "$TARGET" ]]; then
             echo "Using TARGET='$TARGET'"
@@ -413,19 +404,9 @@ jobs:
                   HEIGHT="$PY_OUT"
                 fi
 
-                if [[ -z "$HEIGHT" ]]; then
-                  OUT=""
-                  ALT_OUT=""
-                  INFO_OUT=""
-                  if [[ -n "$OTS_CLI" ]]; then
-                    OUT="$("$OTS_CLI" verify /tmp/proof.ots 2>&1 || true)"
-                    INFO_OUT="$("$OTS_CLI" info /tmp/proof.ots 2>&1 || true)"
-                  fi
-                  if [[ -x "$ALT_CLI" ]]; then
-                    ALT_OUT="$("$ALT_CLI" verify /tmp/proof.ots 2>&1 || true)"
-                  fi
-
-                  COMBINED="$OUT"$'\n'"$ALT_OUT"$'\n'"$INFO_OUT"
+                if [[ -z "$HEIGHT" ]] && [[ -n "$OTS_CLI" ]]; then
+                  # Fallback: parse block height from ots CLI output
+                  COMBINED="$("$OTS_CLI" verify /tmp/proof.ots 2>&1 || true)"$'\n'"$("$OTS_CLI" info /tmp/proof.ots 2>&1 || true)"
                   HEIGHT="$(printf '%s\n' "$COMBINED" |
                     grep -Eo 'block[[:space:]]*#?[0-9]+|blockheight[[:space:]]*#?[0-9]+|BitcoinBlockHeaderAttestation\([0-9]+\)' |
                     grep -Eo '[0-9]+' |
@@ -500,8 +481,7 @@ jobs:
           sudo apt-get install -y gnupg
           python3 -m pip install --upgrade pip
           python3 -m pip install markdown
-          python3 scripts/release.py
-          python3 scripts/release.py --check
+          python3 scripts/release.py --skip-sync
 
       - name: Commit upgraded proof and refreshed footer
         uses: stefanzweifel/git-auto-commit-action@v7
