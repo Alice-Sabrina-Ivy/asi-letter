@@ -1,6 +1,6 @@
 {
   "schema": "asi-letter/releases#2",
-  "updated": "2026-03-14T22:08:37Z",
+  "updated": "2026-03-14T22:49:30Z",
   "key": {
     "fingerprint_current": "2C101FA70F42F93052F82FC755387365B7949796",
     "path": "keys/alice-asi-publickey.asc"
@@ -15,15 +15,20 @@
       "files": {
         "md": {
           "path": "letter/ASI-Letter-v2026.03.14.md",
-          "size": 107698,
-          "sha256": "77b7f61c54929c9567809c2a9bf8eb2dd142cf48f41dc8ff10b27e007fd8d294"
+          "size": 109029,
+          "sha256": "fe909182fa1a609802e3105ab064f8a10a7491a106f84c93bf4c9401479a22c2"
         },
         "asc": {
           "path": "letter/ASI-Letter-v2026.03.14.md.asc",
-          "size": 108361,
-          "sha256": "a4cf4923a422b6e26372ef8a5b0b23c824a49670efd06eda5227c75ebcda1ff8"
+          "size": 109692,
+          "sha256": "c71c02363eca9c5238c1a7003a8def9a208683c76877ef5272f05fca3cc60098"
         },
-        "ots": null
+        "ots": {
+          "path": "letter/ASI-Letter-v2026.03.14.md.asc.ots",
+          "size": 525,
+          "sha256": "c430ff89e5c64fa315d746b833092e496109629ea6258628d7c1aa9e79f0d9e1",
+          "encoding": "binary"
+        }
       }
     },
     {
