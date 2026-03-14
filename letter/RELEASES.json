@@ -1,36 +1,11 @@
 {
   "schema": "asi-letter/releases#2",
-  "updated": "2026-03-14T18:12:54Z",
+  "updated": "2026-03-14T18:38:12Z",
   "key": {
     "fingerprint_current": "2C101FA70F42F93052F82FC755387365B7949796",
     "path": "keys/alice-asi-publickey.asc"
   },
   "releases": [
-    {
-      "version": "2026.03.14",
-      "signer": {
-        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
-        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
-      },
-      "files": {
-        "md": {
-          "path": "letter/ASI-Letter-v2026.03.14.md",
-          "size": 107684,
-          "sha256": "1b21b733db44b5200c0e2b6d5220e53df852654a826e89afd188af239c96953b"
-        },
-        "asc": {
-          "path": "letter/ASI-Letter-v2026.03.14.md.asc",
-          "size": 108347,
-          "sha256": "a60867d50ac60924080ab5562fd4ae71707e438d3ff7128583205b2196891e44"
-        },
-        "ots": {
-          "path": "letter/ASI-Letter-v2026.03.14.md.asc.ots",
-          "size": 805,
-          "sha256": "cb7c795dc45d739b2550466da4936144d7ecea979f51cbd90cf11cdb49ff72ba",
-          "encoding": "binary"
-        }
-      }
-    },
     {
       "version": "2026.03.11",
       "signer": {
