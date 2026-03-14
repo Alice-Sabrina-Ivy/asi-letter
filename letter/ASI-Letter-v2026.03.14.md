@@ -833,8 +833,6 @@ she/her
 * Added **Contents** table of contents; added orientation sentences to **On Qualia & Grounding** and **On the “Alice-after” predictive model**.
 * Structural housekeeping: section renames, reordering, versioning definition, sign-off updated to "until we become," and minor wording/formatting/reference changes.
 * **Compression pass:** deduplicated restated rules; compressed verbose definitions; tightened threat-model table and opening prose. No semantic change intended.
-* Revised trans/continuity framing in **Why I'm writing**: replaced "new self / radical change" language with accurate clarification-not-replacement framing; added change-with-invariants concept; articulated how ASI convergence amplifies and compresses the ordinary human process of gradual identity change, and why that makes the letter's scaffolding necessary rather than defensive.
-* Tightened logical claim in the same passage: scoped the proof-of-concept argument to pattern-continuity-with-invariants rather than substrate-continuity; explicitly acknowledged the hard problem (a perfect copy would also report continuity); reframed the contribution as possessing the capability to define, test, and report on identity invariants — the capability Phase 5 actually requires.
 
 ### v1.2.5 (2026-03-11)
 
