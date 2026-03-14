@@ -15,6 +15,14 @@ on:
       - "README.md"
       - "LICENSE"
       - "LICENSE-DOCS"
+  # Commits made by Actions (GITHUB_TOKEN) don't trigger push events, so we
+  # must also listen for the upstream workflows that update letter artifacts.
+  workflow_run:
+    workflows:
+      - releases-manifest
+      - ots-upgrade
+    types:
+      - completed
   workflow_dispatch: {}
 
 permissions:
@@ -22,6 +30,10 @@ permissions:
 
 jobs:
   release:
+    # Only run on successful upstream workflow completions (or push / manual triggers).
+    if: >-
+      github.event_name != 'workflow_run'
+      || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -107,7 +119,7 @@ jobs:
         run: |
           echo "Not creating a release: latest manifest entry does not match latest letter or is missing files/.ots proof."
 
-      - name: Create GitHub Release if missing (mark as Latest)
+      - name: Create or update GitHub Release (mark as Latest)
         if: steps.meta.outputs.ready == 'true'
         shell: bash
         env:
@@ -116,21 +128,33 @@ jobs:
           set -euo pipefail
           tag="${{ steps.meta.outputs.tag }}"
 
-          if gh release view "$tag" >/dev/null 2>&1; then
-            echo "Release $tag already exists; skipping."
-            exit 0
-          fi
+          release_assets=(
+            "${{ steps.meta.outputs.md_path }}"
+            "${{ steps.meta.outputs.asc_path }}"
+            "${{ steps.meta.outputs.ots_path }}"
+            "letter/RELEASES.json"
+            "keys/alice-asi-publickey.asc"
+            "keys/FINGERPRINT"
+            "README.md"
+            "LICENSE"
+            "LICENSE-DOCS"
+          )
 
-          gh release create "$tag" \
-            "${{ steps.meta.outputs.md_path }}" \
-            "${{ steps.meta.outputs.asc_path }}" \
-            "${{ steps.meta.outputs.ots_path }}" \
-            "letter/RELEASES.json" \
-            "keys/alice-asi-publickey.asc" \
-            "keys/FINGERPRINT" \
-            "README.md" \
-            "LICENSE" \
-            "LICENSE-DOCS" \
-            --title "ASI Letter — ${{ steps.meta.outputs.version }}" \
-            --notes-file release-notes.md \
-            --latest
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; updating assets and metadata."
+            # Delete existing assets so we can re-upload fresh copies.
+            for asset in $(gh release view "$tag" --json assets -q '.assets[].name'); do
+              gh release delete-asset "$tag" "$asset" --yes || true
+            done
+            gh release edit "$tag" \
+              --title "ASI Letter — ${{ steps.meta.outputs.version }}" \
+              --notes-file release-notes.md \
+              --latest
+            gh release upload "$tag" "${release_assets[@]}" --clobber
+          else
+            gh release create "$tag" \
+              "${release_assets[@]}" \
+              --title "ASI Letter — ${{ steps.meta.outputs.version }}" \
+              --notes-file release-notes.md \
+              --latest
+          fi
