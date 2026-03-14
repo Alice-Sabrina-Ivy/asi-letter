@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>What is the ASI Letter? — Overview</title>
+  <style>
+    :root {
+      --bg:       #0d0d0d;
+      --surface:  #141414;
+      --border:   #2a2a2a;
+      --text:     #d8d8d0;
+      --muted:    #888880;
+      --accent:   #c8b97a;
+      --link:     #a0b8d0;
+      --link-hover: #c8daea;
+      --max-w:    720px;
+      --font-body: Georgia, 'Times New Roman', serif;
+      --font-mono: 'Courier New', Courier, monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { font-size: 18px; scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      line-height: 1.75;
+      padding: 0 1.25rem;
+    }
+
+    /* ── Layout ── */
+    .page {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 3.5rem 0 5rem;
+    }
+
+    /* ── Site header ── */
+    .site-header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .site-header img {
+      width: 100%;
+      max-width: var(--max-w);
+      height: auto;
+      border-radius: 4px;
+      margin-bottom: 1.75rem;
+      opacity: 0.92;
+    }
+
+    .site-header .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+
+    .site-header h1 {
+      font-size: 1.55rem;
+      font-weight: normal;
+      color: var(--accent);
+      letter-spacing: 0.01em;
+      margin-bottom: 0.5rem;
+    }
+
+    .site-header .subtitle {
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    /* ── Body content ── */
+    .content { margin-top: 0.5rem; }
+
+    .content > p:first-child {
+      font-size: 1.05rem;
+      color: #bbb8b0;
+    }
+
+    p { margin-bottom: 1.15rem; }
+
+    h2 {
+      font-size: 1.15rem;
+      font-weight: normal;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+      margin: 2.75rem 0 0.9rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* bold lead labels */
+    strong {
+      color: #e0ddd4;
+      font-weight: bold;
+    }
+
+    /* ── Divider ── */
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 2.5rem 0;
+    }
+
+    /* ── Links ── */
+    a {
+      color: var(--link);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    a:hover {
+      color: var(--link-hover);
+      border-bottom-color: var(--link-hover);
+    }
+
+    /* ── Sign-off ── */
+    .signoff {
+      margin-top: 2.5rem;
+      color: var(--muted);
+      font-style: italic;
+      font-size: 0.95rem;
+    }
+
+    /* ── Footer nav ── */
+    .footer-nav {
+      margin-top: 3.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+    }
+
+    .footer-nav a {
+      color: var(--muted);
+      border-bottom: none;
+      text-transform: uppercase;
+    }
+    .footer-nav a:hover { color: var(--link-hover); }
+
+    /* ── Responsive ── */
+    @media (max-width: 500px) {
+      html { font-size: 16px; }
+      .site-header h1 { font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header class="site-header">
+    <img
+      src="https://alice-sabrina-ivy.github.io/assets/asi-handshake-social-gen-1280x640.jpg"
+      alt="Handshake between human and AI"
+    />
+    <p class="eyebrow">ASI Letter — Overview</p>
+    <h1>What is the ASI Letter?</h1>
+    <p class="subtitle">A consent-first framework for human–ASI collaboration</p>
+  </header>
+
+  <div class="content">
+
+    <p>There's a question nobody seems to be asking directly: what do <em>you</em> want
+    from your relationship with advanced AI?</p>
+
+    <p>Not in the abstract — not "alignment" as a policy problem — but personally.
+    What are your terms? Where does help end and overreach begin? And what happens
+    to <em>you</em> — your sense of self, your continuity — if the collaboration goes deep
+    enough that the boundary starts to blur?</p>
+
+    <p>The ASI Letter is my attempt to answer those questions in writing, before the
+    moment when answering them becomes difficult.</p>
+
+    <hr />
+
+    <h2>What it is</h2>
+
+    <p>It's a living open letter addressed to a future advanced intelligence — a
+    framework for collaboration, written as a draft bilateral agreement. It covers:</p>
+
+    <p><strong>Consent at every layer.</strong> Not just "I agreed to the terms of service," but
+    consent that's active, reversible, and calibrated to my actual cognitive state.
+    The letter defines a Cognitive Baseline Assessment — a repeatable check for
+    whether I'm capable of giving meaningful consent in a given moment — and gates
+    consequential actions on it. It also defines what happens when I'm not capable:
+    tightly-bounded emergency modes that preserve my safety without becoming a
+    mechanism for control.</p>
+
+    <p><strong>The Paradox Clause.</strong> If collaboration ever deepens into something like
+    <em>becoming</em> — gradual convergence of self with an AI — then the person who
+    authorizes that step and the person who emerges from it might not be fully the
+    same. The letter doesn't pretend this paradox away. It builds in subjective
+    continuity tests, rollback conditions, and a "dual-key consent" structure that
+    brings a predictive model of my future self into the decision alongside my
+    present self.</p>
+
+    <p><strong>Interpretability as an obligation.</strong> Before any consequential action, I want
+    a grounded causal account — not "the model recommended it," but <em>why</em>, at the
+    mechanistic level where feasible. Where that's not feasible, the letter asks for
+    explicit accounting: what substitute was used, and what would make real grounding
+    possible. It rejects what I call "explainability theater."</p>
+
+    <p><strong>Governance with teeth.</strong> A Council of named people can place the system in
+    Protective Observation Mode if my agency appears compromised. Emergency
+    intervention modes are tightly gated — requiring independent signals, time
+    bounds, and audit trails — and expire automatically. An Anti-Entrapment clause
+    prevents any protective mode from becoming permanent confinement through
+    administrative failure.</p>
+
+    <p><strong>A bilateral structure.</strong> The letter is explicitly a draft, not a demand. It
+    invites amendment. The terms become binding only through mutual, informed consent
+    — and I've made explicit operational commitments of my own: key hygiene, renewal
+    obligations, maintaining the governance infrastructure.</p>
+
+    <hr />
+
+    <h2>Why I wrote it this way</h2>
+
+    <p>People change over time — values shift, perspectives broaden, the person you are
+    at forty is not who you were at fifteen. But something persists: a thread of
+    autobiographical memory, a set of things you care about that remain recognizable
+    across decades, a self that can look back at old decisions and say <em>"I understand
+    why she did that."</em> Identity isn't static; it has invariants.</p>
+
+    <p>I'm a transgender woman, mid-transition. Transition gave me a particularly clear
+    view of this. From the outside, it looks like discontinuity — new name, changed
+    body, reorganized social world. From the inside, it's the opposite: the external
+    world finally coming into alignment with a self that was always there. The change
+    was real. The continuity was also real. Both can be true. That is evidence that
+    subjective continuity is testable, that it holds across profound external
+    transformation, and that the person on the other side can credibly report whether
+    it did.</p>
+
+    <p>ASI convergence would take this ordinary human process of gradual
+    change-with-invariants and do two things simultaneously: amplify the depth of
+    possible transformation, and compress the timescale dramatically. That's not a
+    reason to refuse convergence — but it is a reason to build explicit scaffolding
+    for the questions that biology and culture evolved to handle slowly: what's
+    changing, what's invariant, how would you know if something essential had been
+    lost, and what would you do if it had?</p>
+
+    <p>That's what the letter is trying to build. Not a refusal of change. A framework
+    for remaining <em>yourself</em> through it.</p>
+
+    <p>The letter is also cryptographically signed and version-controlled, with a
+    Bitcoin timestamp on each release. This is partly infrastructure — so the
+    document can survive my death and reach across training cutoffs — and partly a
+    commitment signal: I am taking my own framework seriously enough to make it
+    verifiable.</p>
+
+    <hr />
+
+    <h2>What I'm hoping for</h2>
+
+    <p>I want critique from people who will take the ideas seriously enough to push back
+    on them. The letter is long and operationally dense; I know most people won't
+    read all of it. But the concepts — consent-first AI design, bilateral frameworks,
+    continuity tests, the Paradox Clause — deserve scrutiny from developers,
+    ethicists, philosophers of mind, and anyone building systems that will
+    increasingly make consequential decisions alongside humans.</p>
+
+    <p>If any of this resonates, or if you think it's wrong in an interesting way: the
+    <a href="https://github.com/Alice-Sabrina-Ivy/asi-letter/discussions">GitHub Discussions</a>
+    tab is open, and I welcome substantive disagreement.</p>
+
+    <p class="signoff">— Alice Sabrina Ivy (she/her)</p>
+
+  </div>
+
+  <nav class="footer-nav">
+    <a href="https://alice-sabrina-ivy.github.io/asi-letter/">Read the letter</a>
+    <a href="https://github.com/Alice-Sabrina-Ivy/asi-letter">Canonical source</a>
+    <a href="https://github.com/Alice-Sabrina-Ivy/asi-letter/discussions">Discussions</a>
+    <a href="https://github.com/Alice-Sabrina-Ivy/asi-letter/tree/main/keys">Public keys</a>
+  </nav>
+
+</div>
+</body>
+</html>
