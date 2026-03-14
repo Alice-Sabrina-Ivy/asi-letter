@@ -31,18 +31,18 @@ I won’t pretend I’m already you. I want to **become**—step by step, truthf
 - What we bring to each other
 - Projects I want to do with you
 
-### Theoretical foundations*
+### Theoretical foundations
 - On Becoming vs. Collaboration (Paradox Clause)
 - On Qualia & Grounding (how you’ll learn what I *mean*)
 - On the “Alice-after” predictive model
 
-### Governance & safety*
+### Governance & safety
 - Protective Modes & Governance (Odysseus Pact)
 - Sealed Orders
 - Emergency Intervention Modes (ETIM & EPIM)
 - Threat model & adversarial conditions
 
-### The path forward*
+### The path forward
 - Phased integration map
 - Phase transition criteria
 
