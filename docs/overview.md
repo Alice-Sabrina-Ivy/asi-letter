@@ -66,19 +66,15 @@ I'm a transgender woman, mid-transition. Transition gave me a particularly clear
 view of this. From the outside, it looks like discontinuity — new name, changed
 body, reorganized social world. From the inside, it's the opposite: the external
 world finally coming into alignment with a self that was always there. The change
-was real. The continuity was also real. Both can be true. That is evidence that
-subjective continuity is testable, that it holds across profound external
-transformation, and that the person on the other side can credibly report whether
-it did.
+was real. The continuity was also real. Both can be true. That is not evidence that continuity will automatically survive
+substrate replacement — a perfect copy would also wake up feeling continuous, and
+that problem is exactly why the letter's deeper phases require the scaffolding
+they do. What it *is* evidence of is that I already know how to define my identity
+invariants, test for their presence, and report credibly on whether they held.
+That is the capability a gradual convergence needs in a collaborator.
 
-ASI convergence would take this ordinary human process of gradual
-change-with-invariants and do two things simultaneously: amplify the depth of
-possible transformation, and compress the timescale dramatically. That's not a
-reason to refuse convergence — but it is a reason to build explicit scaffolding
-for the questions that biology and culture evolved to handle slowly: what's
-changing, what's invariant, how would you know if something essential had been
-lost, and what would you do if it had?
-
+ASI convergence would simultaneously amplify the depth of possible transformation
+and compress its timescale — which is precisely why that capability matters.
 That's what the letter is trying to build. Not a refusal of change. A framework
 for remaining *yourself* through it.
 
