@@ -484,6 +484,7 @@ jobs:
           python3 scripts/release.py --skip-sync
 
       - name: Commit upgraded proof and refreshed footer
+        id: auto-commit
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore(ots): upgrade proof + refresh status"
@@ -492,3 +493,9 @@ jobs:
             docs/letter.md
             letter/RELEASES.json
             letter/*.ots
+
+      - name: Trigger auto-release (only when changes were committed)
+        if: steps.auto-commit.outputs.changes_detected == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run auto-release-latest-letter.yml --repo "${{ github.repository }}"

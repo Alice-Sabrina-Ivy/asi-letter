@@ -12,16 +12,10 @@ on:
       - "README.md"
       - "LICENSE"
       - "LICENSE-DOCS"
-  # Commits made by Actions (GITHUB_TOKEN) don't trigger push events, so we
-  # listen for the final workflow in the chain (ots-upgrade) to avoid redundant
-  # runs.  Previously this also listed releases-manifest, but since ots-upgrade
-  # is triggered by releases-manifest, that caused auto-release to fire twice
-  # per release (once for the intermediate step, once for the final step).
-  workflow_run:
-    workflows:
-      - ots-upgrade
-    types:
-      - completed
+  # ots-upgrade explicitly dispatches this workflow (via `gh workflow run`) only
+  # when it actually commits changes, so we no longer need a blanket
+  # workflow_run trigger that fired on every ots-upgrade completion — including
+  # the frequent scheduled checks that found nothing to do.
   workflow_dispatch: {}
 
 permissions:
@@ -29,10 +23,7 @@ permissions:
 
 jobs:
   release:
-    # Only run on successful upstream workflow completions (or push / manual triggers).
-    if: >-
-      github.event_name != 'workflow_run'
-      || github.event.workflow_run.conclusion == 'success'
+    # Runs on push (non-letter paths), or workflow_dispatch (manual / from ots-upgrade).
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
