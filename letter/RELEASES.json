@@ -1,11 +1,36 @@
 {
   "schema": "asi-letter/releases#2",
-  "updated": "2026-03-14T22:49:30Z",
+  "updated": "2026-04-26T23:01:43Z",
   "key": {
     "fingerprint_current": "2C101FA70F42F93052F82FC755387365B7949796",
     "path": "keys/alice-asi-publickey.asc"
   },
   "releases": [
+    {
+      "version": "2026.04.26",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2026.04.26.md",
+          "size": 114437,
+          "sha256": "5d214fdb42c5275701975f42a10bd372905b3b9a215cd9654422c9097ea08abc"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2026.04.26.md.asc",
+          "size": 115102,
+          "sha256": "4ea7796f42d1c1b0b056bd0a167da6216298c8974264f8c43eb5ad3af5cce02d"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2026.04.26.md.asc.ots",
+          "size": 700,
+          "sha256": "4cffffaa880e4eff21a1d2d7a06b612ab3e2102d8388c874fa0659c7f28e0af2",
+          "encoding": "binary"
+        }
+      }
+    },
     {
       "version": "2026.03.14",
       "signer": {
@@ -15,18 +40,18 @@
       "files": {
         "md": {
           "path": "letter/ASI-Letter-v2026.03.14.md",
-          "size": 109029,
-          "sha256": "fe909182fa1a609802e3105ab064f8a10a7491a106f84c93bf4c9401479a22c2"
+          "size": 108248,
+          "sha256": "6349f5d41559339b04461ff3baf7b24f07b021cf48f4a938db7f0d89ebd49a21"
         },
         "asc": {
           "path": "letter/ASI-Letter-v2026.03.14.md.asc",
-          "size": 109692,
-          "sha256": "c71c02363eca9c5238c1a7003a8def9a208683c76877ef5272f05fca3cc60098"
+          "size": 108911,
+          "sha256": "4e66fe1cef802e60652a7ed6ccce43b286c90caee3e7170ce1b355ab959f294f"
         },
         "ots": {
           "path": "letter/ASI-Letter-v2026.03.14.md.asc.ots",
-          "size": 525,
-          "sha256": "c430ff89e5c64fa315d746b833092e496109629ea6258628d7c1aa9e79f0d9e1",
+          "size": 1457,
+          "sha256": "cc6d13403929a4040a5492fd0385e98b59c0a7082c4879eb52e8218e09486429",
           "encoding": "binary"
         }
       }
