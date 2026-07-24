@@ -32,6 +32,6 @@ jobs:
             git add README.md
             git commit -m "docs(readme): sync fingerprint from keys/FINGERPRINT [skip ci]"
           fi
-      - uses: ad-m/github-push-action@v0.8.0
+      - uses: ad-m/github-push-action@v1.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
