@@ -5,9 +5,16 @@ on:
     branches:
       - main
     paths:
-      # Only non-letter assets that aren't part of the automated workflow chain.
-      # Letter artifacts flow through: ots-stamp → releases-manifest → ots-upgrade,
-      # and this workflow triggers on ots-upgrade completion (the final step).
+      # RELEASES.json is the release's source of truth, so any change to it is
+      # worth a publish attempt — the readiness gate below decides whether one
+      # actually happens. This is the safety net for the case where ots-upgrade
+      # dispatches before the regenerated manifest has landed: releases-manifest
+      # commits the corrected manifest moments later, and that push re-fires this
+      # workflow instead of leaving the release stuck a version behind.
+      - "letter/RELEASES.json"
+      # Other non-letter assets that aren't part of the automated workflow chain.
+      # Letter artifacts otherwise flow through: ots-stamp → releases-manifest →
+      # ots-upgrade, which dispatches this workflow explicitly.
       - "keys/**"
       - "README.md"
       - "LICENSE"
@@ -21,9 +28,19 @@ on:
 permissions:
   contents: write
 
+# Publishing mutates GitHub Releases (delete assets, edit, then prune old tags),
+# which is not safe to run twice at once. Now that both a push and an explicit
+# dispatch can land close together, serialize runs. Deliberately a separate group
+# from letter-artifacts-*: that one guards the git working tree, this one guards
+# the Releases API.
+concurrency:
+  group: auto-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
-    # Runs on push (non-letter paths), or workflow_dispatch (manual / from ots-upgrade).
+    # Runs on push (RELEASES.json / non-letter paths), or workflow_dispatch
+    # (manual, or from ots-upgrade when it commits).
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -108,6 +125,11 @@ jobs:
         shell: bash
         run: |
           echo "Not creating a release: latest manifest entry does not match latest letter or is missing files/.ots proof."
+          echo "  newest letter on disk : ${{ steps.meta.outputs.latest_letter_version }}"
+          echo "  manifest releases[0]  : ${{ steps.meta.outputs.version }}"
+          echo "  md path               : ${{ steps.meta.outputs.md_path }}"
+          echo "  asc path              : ${{ steps.meta.outputs.asc_path }}"
+          echo "  ots path              : ${{ steps.meta.outputs.ots_path }}"
 
       - name: Create or update GitHub Release (mark as Latest)
         if: steps.meta.outputs.ready == 'true'
