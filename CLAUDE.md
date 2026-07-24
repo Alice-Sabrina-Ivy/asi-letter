@@ -119,7 +119,7 @@ All workflows share concurrency group `letter-artifacts-${{ github.ref }}` to pr
 |---|---|---|
 | `verify-releases.yml` | push / PR | Installs GnuPG, runs `verify-clearsign.sh` — safety net for signature integrity |
 | `releases-manifest.yml` | push to `letter/**` or `keys/**`, manual | Full release pipeline + auto-commit with `[manifest-auto]` tag |
-| `auto-release-latest-letter.yml` | push to release paths | Creates/updates the GitHub Release tagged as "latest" |
+| `auto-release-latest-letter.yml` | push to `letter/RELEASES.json`, `keys/**`, `README.md`, licenses; dispatch from `ots-upgrade`; manual | Creates/updates the GitHub Release tagged as "latest". Publishes only when `RELEASES.json`'s newest entry matches the newest letter on disk **and** carries an `.ots` proof |
 | `ots-stamp-letter-asc.yml` | push to `letter/*.asc` | Stamps new `.ots` proofs and commits them |
 | `ots-upgrade.yml` | scheduled / push / workflow_run | Upgrades existing OTS proofs and refreshes footer status |
 | `ots-verify-upgrade.yml` | manual | Inspect + upgrade a single proof ad-hoc |
@@ -191,3 +191,4 @@ python3 scripts/release.py --check
 4. **Breaking auto-commit loops** — changing commit message formats without updating workflow `if:` guards can cause infinite re-triggering.
 5. **Removing Pages wait calls** — skipping `wait_for_pages_idle.sh` causes auto-commits to cancel in-flight Pages deployments.
 6. **Modifying signed releases** — any change to a `.asc` file invalidates the OpenPGP signature.
+7. **Multi-line `file_pattern` in `git-auto-commit-action`** — it parses the input with `read -r -a ... <<< "$INPUT_FILE_PATTERN"`, which stops at the first newline, so a YAML block scalar silently stages only the first path and drops the rest. Always pass the paths space-separated on one line.

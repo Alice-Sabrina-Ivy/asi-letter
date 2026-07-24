@@ -488,11 +488,13 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore(ots): upgrade proof + refresh status"
-          file_pattern: |
-            docs/index.html
-            docs/letter.md
-            letter/RELEASES.json
-            letter/*.ots
+          # Keep this on ONE line. git-auto-commit-action parses file_pattern with
+          # `read -r -a ... <<< "$INPUT_FILE_PATTERN"`, which stops at the first
+          # newline, so a multi-line block silently stages only docs/index.html.
+          # That dropped the regenerated manifest from the commit, and the
+          # auto-release dispatch below then read a RELEASES.json whose newest
+          # entry still had "ots": null and refused to publish.
+          file_pattern: docs/index.html docs/letter.md letter/RELEASES.json letter/*.ots
 
       - name: Trigger auto-release (only when changes were committed)
         if: steps.auto-commit.outputs.changes_detected == 'true'
