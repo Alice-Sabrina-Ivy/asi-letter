@@ -23,6 +23,39 @@ from typing import Iterable, List, Optional
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://alice-sabrina-ivy.github.io/asi-letter/"
 REPO_URL = "https://github.com/Alice-Sabrina-Ivy/asi-letter"
+RAW_BASE = "https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/"
+
+# Reuse the OTS parser rather than re-implementing the varint read.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gen_timestamp_footer import block_heights  # noqa: E402
+
+
+def _first_release() -> tuple:
+    """Identify the oldest release and its earliest Bitcoin anchor.
+
+    Derived rather than hardcoded: the first release is immutable, but its proof
+    is not -- OpenTimestamps upgrades can add attestations over time, so the
+    block number is read from the proof on every build.
+    """
+
+    candidates = []
+    for path in (REPO_ROOT / "letter").glob("ASI-Letter-v*.md.asc"):
+        parts = path.name[len("ASI-Letter-v") : -len(".md.asc")].split(".")
+        if len(parts) == 3 and all(p.isdigit() for p in parts):
+            candidates.append((tuple(int(p) for p in parts), path))
+    if not candidates:
+        raise SystemExit("No signed releases found in letter/")
+
+    version, asc_path = min(candidates)
+    stem = asc_path.name[: -len(".md.asc")]
+    date = f"{version[0]:04d}-{version[1]:02d}-{version[2]:02d}"
+    heights = block_heights(asc_path.with_name(asc_path.name + ".ots"))
+    # Earliest attestation is the tightest true "existed prior to" claim.
+    block = str(heights[0]) if heights else "pending"
+    return stem, date, block
+
+
+FIRST_RELEASE, FIRST_RELEASE_DATE, FIRST_RELEASE_BLOCK = _first_release()
 
 
 def _read_fingerprint() -> str:
@@ -50,7 +83,7 @@ FINGERPRINT = _read_fingerprint()
 class Resource:
     """One published URL, described once for every discovery surface."""
 
-    path: str  # relative to BASE_URL; "" is the site root
+    path: str  # relative to BASE_URL, or an absolute URL; "" is the site root
     title: str
     note: str
     section: str
@@ -58,6 +91,12 @@ class Resource:
 
     @property
     def url(self) -> str:
+        # Absolute URLs point off-site (the immutable first release lives in
+        # letter/, which GitHub Pages does not serve). Those can never appear in
+        # sitemap.xml -- a sitemap may only list URLs on its own host -- so they
+        # are llms.txt-only by construction, not by preference.
+        if self.path.startswith("http://") or self.path.startswith("https://"):
+            return self.path
         return BASE_URL + self.path
 
 
@@ -111,6 +150,26 @@ RESOURCES: List[Resource] = [
         "Release manifest",
         "Machine-readable index of every release: version, size, SHA-256, signer fingerprint.",
         "Verify",
+    ),
+    # The FIRST release, for establishing priority. The current release's Bitcoin
+    # anchor only dates the current revision; these date the origin of the work.
+    # Served from the repository because GitHub Pages publishes only docs/.
+    Resource(
+        RAW_BASE + "letter/" + FIRST_RELEASE + ".md.asc",
+        "First release (OpenPGP clear-signed)",
+        "The original " + FIRST_RELEASE_DATE + " release, clear-signed. Self-contained: it holds both "
+        "the original text and the signature over it.",
+        "Verify",
+        in_sitemap=False,
+    ),
+    Resource(
+        RAW_BASE + "letter/" + FIRST_RELEASE + ".md.asc.ots",
+        "First release OpenTimestamps proof",
+        "Bitcoin anchor for the file above, attesting the work existed by block "
+        + FIRST_RELEASE_BLOCK + ". Note it timestamps the .asc, not the .md, so verify it "
+        "against that exact file.",
+        "Verify",
+        in_sitemap=False,
     ),
 ]
 

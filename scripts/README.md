@@ -142,7 +142,12 @@ so they cannot drift apart or go stale:
 * `docs/sitemap.xml` — every published URL, with `lastmod` taken from the
   newest release in the manifest.
 * `docs/llms.txt` — a structured index for automated readers, describing what
-  the letter is, which file is authoritative, and how to verify it.
+  the letter is, which file is authoritative, and how to verify it. It also
+  points at the FIRST release and its Bitcoin anchor: the current release's
+  timestamp only dates the current revision, so the original is what establishes
+  when the work existed. Those two entries are absolute `raw.githubusercontent`
+  URLs because Pages serves only `docs/`; a sitemap may list only URLs on its own
+  host, so they are `llms.txt`-only by construction.
 * `docs/.nojekyll` — makes Pages serve `docs/` verbatim rather than running it
   through Jekyll, which silently drops paths beginning with `.` or `_`.
 
