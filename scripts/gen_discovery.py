@@ -23,7 +23,27 @@ from typing import Iterable, List, Optional
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://alice-sabrina-ivy.github.io/asi-letter/"
 REPO_URL = "https://github.com/Alice-Sabrina-Ivy/asi-letter"
-FINGERPRINT = "2C101FA70F42F93052F82FC755387365B7949796"
+
+
+def _read_fingerprint() -> str:
+    """Read the trust anchor from keys/FINGERPRINT rather than hardcoding it.
+
+    Hardcoding meant a key rotation would silently keep publishing the OLD
+    fingerprint in llms.txt while README.md auto-synced to the new one -- the
+    published trust anchor disagreeing with the actual signing key, with nothing
+    reporting it.
+    """
+
+    raw = (REPO_ROOT / "keys" / "FINGERPRINT").read_text(encoding="utf-8-sig")
+    fingerprint = "".join(ch for ch in raw if ch in "0123456789abcdefABCDEF").upper()
+    if len(fingerprint) != 40:
+        raise SystemExit(
+            f"keys/FINGERPRINT must contain exactly 40 hex characters (got {len(fingerprint)})"
+        )
+    return fingerprint
+
+
+FINGERPRINT = _read_fingerprint()
 
 
 @dataclass(frozen=True)
@@ -153,12 +173,12 @@ def latest_release_date(manifest_path: Path) -> str:
     return f"{year:04d}-{month:02d}-{day:02d}"
 
 
-def render_sitemap(lastmod: str) -> str:
+def render_sitemap(lastmod: str, resources=None) -> str:
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ]
-    for res in RESOURCES:
+    for res in (RESOURCES if resources is None else resources):
         if not res.in_sitemap:
             continue
         lines += [
@@ -171,14 +191,14 @@ def render_sitemap(lastmod: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_llms_txt(lastmod: str) -> str:
+def render_llms_txt(lastmod: str, resources=None) -> str:
     out = ["# ASI Letter", "", LLMS_INTRO.format(fingerprint=FINGERPRINT).rstrip(), ""]
 
     for section in ("Read", "Verify"):
         out += [f"## {section}", ""]
         out += [
             f"- [{res.title}]({res.url}): {res.note}"
-            for res in RESOURCES
+            for res in (RESOURCES if resources is None else resources)
             if res.section == section
         ]
         out.append("")
@@ -222,9 +242,18 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
 
     lastmod = latest_release_date(_resolve(args.manifest))
 
+    resources = [
+        res
+        for res in RESOURCES
+        # Do not advertise the timestamp proof in the window before it is stamped;
+        # publish_latest_artifacts.py removes a stale one rather than serve a proof
+        # belonging to an older release.
+        if res.path != "letter.md.asc.ots" or (docs_dir / "letter.md.asc.ots").exists()
+    ]
+
     changed = False
-    changed |= _write(docs_dir / "sitemap.xml", render_sitemap(lastmod), args.check)
-    changed |= _write(docs_dir / "llms.txt", render_llms_txt(lastmod), args.check)
+    changed |= _write(docs_dir / "sitemap.xml", render_sitemap(lastmod, resources), args.check)
+    changed |= _write(docs_dir / "llms.txt", render_llms_txt(lastmod, resources), args.check)
     changed |= _write(docs_dir / ".nojekyll", "", args.check)
 
     if not changed:

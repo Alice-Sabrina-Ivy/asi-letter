@@ -87,7 +87,6 @@ def plan_copies(letter_dir: Path, keys_dir: Path, docs_dir: Path) -> List[Tuple[
 
     pairs: List[Tuple[Path, Path]] = [
         (asc, docs_dir / "letter.md.asc"),
-        (ots, docs_dir / "letter.md.asc.ots"),
         (public_key, docs_dir / "alice-asi-publickey.asc"),
         (keys_dir / "FINGERPRINT", docs_dir / "FINGERPRINT.txt"),
         (letter_dir / "RELEASES.json", docs_dir / "releases.json"),
@@ -98,7 +97,37 @@ def plan_copies(letter_dir: Path, keys_dir: Path, docs_dir: Path) -> List[Tuple[
     missing = [str(src) for src, _ in pairs if not src.exists()]
     if missing:
         raise SystemExit("Missing required source artifact(s):\n  " + "\n  ".join(missing))
+
+    # The OTS proof is deliberately OPTIONAL. There is a real window -- between a
+    # new .asc being pushed and ots-stamp-letter-asc.yml producing its proof --
+    # where the newest release has no .ots yet. gen_releases_manifest.py already
+    # tolerates this and records "ots": null; treating it as fatal here made this
+    # stage stricter than the rest of the pipeline and turned that ordinary race
+    # into a red build.
+    if ots.exists():
+        pairs.append((ots, docs_dir / "letter.md.asc.ots"))
     return pairs
+
+
+def prune_stale_ots(letter_dir: Path, docs_dir: Path, check_only: bool) -> bool:
+    """Drop a published proof that belongs to an older release.
+
+    Serving the previous release's .ots beside the current .asc would be worse
+    than serving none: it looks like a valid timestamp for a document it does not
+    attest. Once the proof is stamped, the next run republishes it.
+    """
+
+    latest_md = discover_latest_md(letter_dir)
+    ots = latest_md.with_name(latest_md.name + ".asc.ots")
+    published = docs_dir / "letter.md.asc.ots"
+    if ots.exists() or not published.exists():
+        return False
+    if check_only:
+        print(f"  would remove {published.relative_to(REPO_ROOT)} (no proof for newest release yet)")
+        return True
+    published.unlink()
+    print(f"  removed {published.relative_to(REPO_ROOT)} (no proof for newest release yet)")
+    return True
 
 
 def publish(letter_dir: Path, keys_dir: Path, docs_dir: Path, check_only: bool) -> bool:
@@ -114,6 +143,8 @@ def publish(letter_dir: Path, keys_dir: Path, docs_dir: Path, check_only: bool) 
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(payload)
         print(f"  published {dest.relative_to(REPO_ROOT)} <- {src.relative_to(REPO_ROOT)}")
+    changed |= prune_stale_ots(letter_dir, docs_dir, check_only)
+
     if not changed:
         print("  stable artifacts already up to date")
     return changed

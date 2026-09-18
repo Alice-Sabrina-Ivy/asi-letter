@@ -9,8 +9,12 @@ on:
     types:
       - completed
   push:
+    # Only a HUMAN edit can fire these. docs/ artifacts are written by this
+    # workflow and releases-manifest, pushed with GITHUB_TOKEN, and GitHub does
+    # not start workflow runs from GITHUB_TOKEN pushes. docs/letter.md.asc was
+    # listed here for a year before the file existed at all, so it could never
+    # match; it is dropped rather than left as a trigger that looks load-bearing.
     paths:
-      - "docs/letter.md.asc"
       - "docs/index.html"
 
 concurrency:
@@ -275,11 +279,14 @@ jobs:
                   write_output("should_run", "true")
                   return 0
           
-              ots_path = (
-                  release_entry.get("files", {})
-                  .get("ots", {})
-                  .get("path")
-              )
+              # gen_releases_manifest.py records "ots": null while a proof is
+              # still pending, and .get("ots", {}) returns that None rather than
+              # the default, so .get("path") raised AttributeError. The outer
+              # handler then failed open, which made the "lacks an OTS proof path"
+              # branch below unreachable for the exact case it was written for.
+              files = release_entry.get("files") or {}
+              ots_entry = files.get("ots") or {}
+              ots_path = ots_entry.get("path")
               if not ots_path:
                   log("Latest release lacks an OTS proof path; allowing workflow to proceed.")
                   write_output("should_run", "true")
@@ -482,7 +489,12 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install markdown
           git status --porcelain --untracked-files=all > /tmp/tree-before.txt
-          python3 scripts/release.py --skip-sync
+          # Run every stage. With --skip-sync, stage 1 left docs/letter.md at
+          # whatever release it already held while stage 5 still republished the
+          # NEWEST letter's signature as docs/letter.md.asc -- so the site could
+          # serve one release's text beside another release's signature. Stage 1
+          # is idempotent, so running it here simply keeps the pair consistent.
+          python3 scripts/release.py
 
       - name: Verify every regenerated path is covered by the commit step
         run: |
@@ -498,7 +510,7 @@ jobs:
           # generated_paths.sh prints one line; letter/*.ots is specific to this
           # workflow (it commits the upgraded proof alongside the regenerated
           # artifacts), so it is appended rather than added to the shared list.
-          echo "list=$(.github/scripts/generated_paths.sh) letter/*.ots" >> "$GITHUB_OUTPUT"
+          echo "list=$(.github/scripts/generated_paths.sh --stageable) letter/*.ots" >> "$GITHUB_OUTPUT"
 
       - name: Commit upgraded proof and refreshed footer
         id: auto-commit

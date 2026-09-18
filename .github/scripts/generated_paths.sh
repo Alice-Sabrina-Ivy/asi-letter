@@ -15,6 +15,20 @@
 # Keep in sync with the stage list in scripts/release.py. The
 # assert_generated_paths.sh guard fails CI if a stage starts writing a path that
 # is missing here, so this cannot drift unnoticed.
+#
+# Usage:
+#   generated_paths.sh              every generated path (use for coverage checks)
+#   generated_paths.sh --stageable  only paths git can accept as a pathspec
+#
+# --stageable matters because `git add -- <path>` aborts with
+# "fatal: pathspec ... did not match any files" (exit 128, nothing staged) when a
+# listed path exists in neither the worktree nor the index. publish_latest_artifacts.py
+# deliberately removes docs/letter.md.asc.ots while a new release is waiting for its
+# OpenTimestamps proof; once that deletion is committed the path is untracked and
+# absent, so passing the raw list to git add would kill the commit step on every
+# subsequent run -- precisely inside the window that was meant to be survivable.
+# `git status --porcelain` and `git diff` tolerate missing pathspecs, so the dirty
+# check still passes and the failure lands on the add.
 set -euo pipefail
 
 GENERATED_PATHS=(
@@ -36,5 +50,17 @@ GENERATED_PATHS=(
   docs/llms.txt
   docs/.nojekyll
 )
+
+if [[ "${1:-}" == "--stageable" ]]; then
+  cd "$(git rev-parse --show-toplevel)"
+  stageable=()
+  for path in "${GENERATED_PATHS[@]}"; do
+    if [[ -e "$path" ]] || git ls-files --error-unmatch -- "$path" >/dev/null 2>&1; then
+      stageable+=("$path")
+    fi
+  done
+  printf '%s\n' "${stageable[*]}"
+  exit 0
+fi
 
 printf '%s\n' "${GENERATED_PATHS[*]}"

@@ -94,85 +94,107 @@ def normalize(text: str) -> str:
     return collapsed
 
 
-def make_signature_footer() -> ET.Element:
-    footer_html = (
-        "<footer class=\"signature\">"
-        "<p>Until we meet—and if continuity holds, until we become—</p>"
-        "<p>Alice Sabrina Ivy</p>"
-        "<p class=\"pronouns\">she/her</p>"
-        "</footer>"
-    )
-    return ET.fromstring(footer_html)
-
-
 def paragraph_text(element: ET.Element) -> str:
     return "".join(element.itertext()).strip()
 
 
+def _is_bare_canonical_pointer(child: ET.Element) -> bool:
+    """True only when the paragraph is *nothing but* a pointer at the repo.
+
+    The CTA bar already carries a "Canonical source" button, so a paragraph that
+    merely repeats that link is redundant and gets dropped. A paragraph that
+    happens to *contain* the repo link among other prose is not redundant, and
+    removing it loses signed content -- which is exactly what used to happen:
+    the letter's closing block ("Version", "Core invariant", "Authenticity",
+    "Verification failure", "Author key fingerprint", "Author key policy",
+    "Canonical Source") is a single Markdown paragraph ending in a repo link, so
+    matching on "contains a repo anchor" deleted the whole authenticity block
+    from the rendered page while the signed .md kept it.
+    """
+
+    text = re.sub(r"\s+", " ", paragraph_text(child)).strip()
+    anchors = [a for a in child.findall(".//a") if a.get("href") == REPO_URL]
+
+    if not anchors:
+        # A label-only paragraph such as "Canonical Source: <bare url>".
+        return bool(re.fullmatch(r"canonical source\s*:?\s*\S*", text, flags=re.IGNORECASE))
+
+    residue = text
+    for anchor in anchors:
+        anchor_text = re.sub(r"\s+", " ", "".join(anchor.itertext())).strip()
+        if anchor_text:
+            residue = residue.replace(anchor_text, " ")
+    residue = re.sub(r"^\W*canonical source\W*:?", "", residue, flags=re.IGNORECASE)
+    residue = re.sub(r"[\s:*_.,;—-]+", "", residue)
+    return not residue
+
+
 def remove_canonical_paragraphs(root: ET.Element) -> None:
     for parent in root.iter():
-        children = list(parent)
-        for child in children:
-            if child.tag != "p":
-                continue
-            text = paragraph_text(child)
-            if re.match(r"^canonical source\s*:", text, flags=re.IGNORECASE):
+        for child in list(parent):
+            if child.tag == "p" and _is_bare_canonical_pointer(child):
                 parent.remove(child)
-                continue
-            for anchor in child.findall(".//a"):
-                href = anchor.get("href")
-                if href == REPO_URL:
-                    parent.remove(child)
-                    break
+
+
+def _wrap_in_signature_footer(parent: ET.Element, paragraphs: list) -> None:
+    """Move `paragraphs` into a <footer class="signature"> in place.
+
+    The paragraphs are re-parented verbatim. Nothing is rewritten, so the page
+    can only ever display the sign-off exactly as it appears in the signed
+    document.
+    """
+
+    index = list(parent).index(paragraphs[0])
+    footer = ET.Element("footer", {"class": "signature"})
+    for offset, paragraph in enumerate(paragraphs):
+        parent.remove(paragraph)
+        if offset == len(paragraphs) - 1 and len(paragraphs) > 1:
+            paragraph.set("class", "pronouns")
+        footer.append(paragraph)
+    parent.insert(index, footer)
 
 
 def ensure_signature(root: ET.Element) -> bool:
-    signature_found = False
+    """Style the letter's existing sign-off. Never invent one.
+
+    This previously substituted a hardcoded footer for the real sign-off, and
+    appended that same hardcoded text when it failed to find one -- so the page
+    could show a closing that was not in the signed document at all. It now only
+    wraps what is already there, and reports failure to the caller instead.
+    """
+
     paragraph_items = []
     for parent in root.iter():
         for child in list(parent):
             if child.tag == "p":
                 paragraph_items.append((parent, child))
 
+    # Single-paragraph form: the sign-off, name and pronouns joined by soft breaks.
     for parent, paragraph in paragraph_items:
         text = normalize(paragraph_text(paragraph))
         if re.match(r"^until we meet.+alice sabrina ivy(\s+she/her)?$", text):
-            children = list(parent)
-            index = children.index(paragraph)
-            parent.remove(paragraph)
-            parent.insert(index, make_signature_footer())
-            signature_found = True
-            break
+            _wrap_in_signature_footer(parent, [paragraph])
+            return True
 
-    if not signature_found:
-        for index in range(len(paragraph_items) - 2):
-            t0 = normalize(paragraph_text(paragraph_items[index][1]))
-            t1 = normalize(paragraph_text(paragraph_items[index + 1][1]))
-            t2 = normalize(paragraph_text(paragraph_items[index + 2][1]))
-            if t0 in {"until we meet", "until we meet-"} and t1 == "alice sabrina ivy" and t2 in {
-                "she/her",
-                "she / her",
-            }:
-                parent, first = paragraph_items[index]
-                children = list(parent)
-                insert_at = children.index(first)
-                parent.remove(first)
-                parent.insert(insert_at, make_signature_footer())
-                parent.remove(paragraph_items[index + 1][1])
-                parent.remove(paragraph_items[index + 2][1])
-                signature_found = True
-                break
+    # Three-paragraph form: separated by blank lines.
+    for index in range(len(paragraph_items) - 2):
+        parent, first = paragraph_items[index]
+        if paragraph_items[index + 1][0] is not parent or paragraph_items[index + 2][0] is not parent:
+            continue
+        t0 = normalize(paragraph_text(first))
+        t1 = normalize(paragraph_text(paragraph_items[index + 1][1]))
+        t2 = normalize(paragraph_text(paragraph_items[index + 2][1]))
+        if t0 in {"until we meet", "until we meet-"} and t1 == "alice sabrina ivy" and t2 in {
+            "she/her",
+            "she / her",
+        }:
+            _wrap_in_signature_footer(
+                parent,
+                [first, paragraph_items[index + 1][1], paragraph_items[index + 2][1]],
+            )
+            return True
 
-    if not signature_found:
-        text_tail = normalize(" ".join(paragraph_text(item[1]) for item in paragraph_items))[-240:]
-        if "until we meet" in text_tail and "alice sabrina ivy" in text_tail and "she/her" in text_tail:
-            root.append(make_signature_footer())
-            signature_found = True
-
-    if not signature_found:
-        root.append(make_signature_footer())
-
-    return signature_found
+    return False
 
 
 def add_link_attributes(root: ET.Element) -> None:
@@ -197,25 +219,21 @@ def remove_existing_cta(root: ET.Element) -> None:
 
 
 def insert_cta(root: ET.Element) -> None:
+    """Insert the CTA bar after the signature footer.
+
+    Two definitions of this function used to exist; the second silently shadowed
+    the first, which meant remove_existing_cta() was never called and the
+    nested-parent search was lost. This keeps both behaviours.
+    """
+
     remove_existing_cta(root)
     cta_element = ET.fromstring(CTA_HTML)
     for parent in root.iter():
-        children = list(parent)
-        for index, child in enumerate(children):
+        for index, child in enumerate(list(parent)):
             if child.tag == "footer" and child.get("class") == "signature":
                 parent.insert(index + 1, cta_element)
                 return
-def insert_cta(root: ET.Element) -> None:
-    cta_element = ET.fromstring(CTA_HTML)
-    signature = root.find(".//footer[@class='signature']")
-    if signature is not None:
-        children = list(root)
-        if signature in children:
-            index = children.index(signature)
-            root.insert(index + 1, cta_element)
-            return
     root.append(cta_element)
-
 
 def ensure_blank_line_before_lists(text: str) -> str:
     """Insert a blank line before list items that immediately follow a non-list line.
@@ -281,6 +299,18 @@ def replace_render_block(text: str, render_html: str) -> Tuple[str, int]:
 def process(index_path: Path, markdown_path: Path, check_only: bool) -> bool:
     markdown_text = markdown_path.read_text(encoding="utf-8")
     render_result = render_markdown(markdown_text)
+
+    # Previously this flag was discarded and a hardcoded sign-off was appended in
+    # its place, so a letter whose closing no longer matched would silently
+    # publish a footer that was not in the signed document. Fail instead: the
+    # rendered page must not contain words the author did not sign.
+    if not render_result.signature_found:
+        raise SystemExit(
+            f"Could not locate the letter's sign-off in {markdown_path}.\n"
+            "ensure_signature() only styles an existing sign-off; it never invents one.\n"
+            "If the closing wording changed, update the patterns in ensure_signature()."
+        )
+
     text = index_path.read_text(encoding="utf-8")
     updated, _ = replace_render_block(text, render_result.html)
     if updated != text:

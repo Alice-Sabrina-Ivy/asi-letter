@@ -88,7 +88,8 @@ Individual stages can be skipped with `--skip-sync`, `--skip-manifest`, `--skip-
 | `python3 scripts/publish_latest_artifacts.py [--check]` | Publish signature/proof/key/manifest to `docs/` under stable names |
 | `python3 scripts/gen_discovery.py [--check]` | Regenerate `docs/sitemap.xml`, `docs/llms.txt`, `docs/.nojekyll` |
 | `python3 scripts/find_latest_ots.py <dir>` | Output info about the newest `.ots` proof |
-| `bash scripts/verify-clearsign.sh` | Verify all `letter/*.asc` against `keys/FINGERPRINT` |
+| `bash scripts/verify-clearsign.sh` | Verify all `letter/*.asc` against `keys/FINGERPRINT` (binds to the key, rejects expired/revoked, checks payloads) |
+| `python3 scripts/check_signed_payload.py` | Verify each `letter/*.md` is the text its `.asc` actually signed |
 | `bash scripts/sign-and-export.sh <key> <file>` | Clear-sign a Markdown letter with GPG |
 
 ---
@@ -133,6 +134,37 @@ wc -c < letter/ASI-Letter-v2026.07.24.md
 ```
 (`letter/ASI-Letter-v2025.11.20.md` genuinely contains CRLF in its blob, from a
 GitHub web upload. It is self-consistent and must be left alone.)
+
+### The .md must be the text that was signed
+
+`gpg --verify` on a clear-signed file validates the text embedded *inside* the
+`.asc`; it never reads the sibling `.md`. So a `.md` can drift from the document
+it is paired with and every signature check still passes, while `docs/letter.md`,
+`docs/index.html`, the GitHub Release asset and the `sha256` in `RELEASES.json`
+all follow the drifted file.
+
+This already happened: `letter/ASI-Letter-v2025.09.14.md` diverged from its signed
+payload on 18 lines (the file kept clearsign dash-escaping, `- ---`, where the
+signed text has `---`), i.e. it was a transcript copied out of the `.asc`. It has
+been restored from the signed payload.
+
+`scripts/check_signed_payload.py` now enforces this, and `verify-clearsign.sh`
+runs it. **The comparison must be canonicalized**: RFC 4880 clear-signing strips
+per-line trailing whitespace and normalizes the final newline, and this letter
+uses trailing double-spaces as Markdown hard breaks, so a raw `cmp` reports a
+false difference on 7 of the 14 existing releases. The `.asc` is authoritative:
+correct the `.md` to match it, never the reverse.
+
+### Shared concurrency group (deliberate, not a bug)
+
+Five workflows share `letter-artifacts-${{ github.ref }}` with
+`cancel-in-progress: false`. GitHub keeps only ONE pending run per group, so a
+burst of triggers can drop a queued run. This is accepted rather than fixed:
+every stage of `release.py` regenerates from scratch and is idempotent, so the
+surviving run produces the same final state, and the 30-minute `ots-upgrade`
+cron re-converges anyway. Splitting the group would trade a benign dropped run
+for genuine concurrent-mutation races. Do not "fix" it by giving each workflow
+its own group.
 
 ### Committing generated artifacts in CI
 

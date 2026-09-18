@@ -49,7 +49,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          branch="${GITHUB_REF##*/}"
+          # GITHUB_REF_NAME is the full short name. ${GITHUB_REF##*/} kept only the
+          # text after the LAST slash, so a branch like "fix/ots-proof" became
+          # "ots-proof" and the fetch/rebase targeted a branch that does not exist.
+          branch="${GITHUB_REF_NAME:-${GITHUB_REF#refs/heads/}}"
           git fetch origin "$branch"
           git pull --rebase --autostash origin "$branch"
 

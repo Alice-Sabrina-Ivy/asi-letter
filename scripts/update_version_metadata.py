@@ -35,7 +35,23 @@ _SD_START = "<!-- structured-data:start -->"
 _SD_END = "<!-- structured-data:end -->"
 
 _SITE_URL = "https://alice-sabrina-ivy.github.io/asi-letter/"
-_FINGERPRINT = "2C101FA70F42F93052F82FC755387365B7949796"
+def _read_fingerprint() -> str:
+    """Read the trust anchor from keys/FINGERPRINT rather than hardcoding it.
+
+    The JSON-LD publishes this as the author's openpgp4fpr identifier; a
+    hardcoded copy would keep asserting the old key after a rotation.
+    """
+
+    raw = (REPO_ROOT / "keys" / "FINGERPRINT").read_text(encoding="utf-8-sig")
+    fingerprint = "".join(ch for ch in raw if ch in "0123456789abcdefABCDEF").upper()
+    if len(fingerprint) != 40:
+        raise SystemExit(
+            f"keys/FINGERPRINT must contain exactly 40 hex characters (got {len(fingerprint)})"
+        )
+    return fingerprint
+
+
+_FINGERPRINT = _read_fingerprint()
 _IMAGE_URL = _SITE_URL + "assets/asi-handshake-social-gen-1280x640.jpg"
 
 

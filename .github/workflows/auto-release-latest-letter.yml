@@ -5,12 +5,13 @@ on:
     branches:
       - main
     paths:
-      # RELEASES.json is the release's source of truth, so any change to it is
-      # worth a publish attempt — the readiness gate below decides whether one
-      # actually happens. This is the safety net for the case where ots-upgrade
-      # dispatches before the regenerated manifest has landed: releases-manifest
-      # commits the corrected manifest moments later, and that push re-fires this
-      # workflow instead of leaving the release stuck a version behind.
+      # NOTE: this path is kept only for a HUMAN edit to the manifest. It cannot
+      # fire for the automated flow: RELEASES.json is written exclusively by
+      # releases-manifest.yml and pushed with GITHUB_TOKEN, and GitHub does not
+      # start workflow runs from GITHUB_TOKEN pushes. The comment that used to sit
+      # here described this as the safety net for a late manifest landing after an
+      # ots-upgrade dispatch — that safety net did not exist. releases-manifest.yml
+      # now dispatches this workflow explicitly when it commits, which does work.
       - "letter/RELEASES.json"
       # Other non-letter assets that aren't part of the automated workflow chain.
       # Letter artifacts otherwise flow through: ots-stamp → releases-manifest →

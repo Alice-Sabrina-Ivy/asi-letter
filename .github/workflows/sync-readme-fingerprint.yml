@@ -17,21 +17,53 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Full history and an explicit branch: the default detached checkout at
+          # the event SHA left nothing to rebase onto, so this job raced
+          # releases-manifest (which also fires on keys/**) and its push could
+          # land on a moved branch.
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
       - name: Update README fingerprint line
         shell: bash
         run: |
+          set -euo pipefail
           RAW=$(python3 -c "from pathlib import Path; text = Path('keys/FINGERPRINT').read_text(encoding='utf-8-sig'); print(''.join(text.split()).upper())")
+          if [[ ${#RAW} -ne 40 ]]; then
+            echo "keys/FINGERPRINT must contain exactly 40 hex characters (got ${#RAW})." >&2
+            exit 1
+          fi
           SPACED=$(echo "$RAW" | sed -E "s/.{4}/& /g;s/ $//")
           DOUBLE=$(echo "$SPACED" | sed -E "s/^(([^ ]+ ){5})/\1 /")
-          sed -E -i "s|(\*\*Fingerprint to trust:\*\*) \`[A-F0-9 ]+\`|\1 \`$DOUBLE\`|g" README.md
-          if git diff --quiet -- README.md; then
-            echo "README already up to date."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add README.md
-            git commit -m "docs(readme): sync fingerprint from keys/FINGERPRINT [skip ci]"
+
+          # sed -i silently succeeds when nothing matches, so a README whose
+          # wording drifted would produce no change and the job would report
+          # "README already up to date" -- a false pass that leaves the published
+          # trust anchor stale. Require the anchor line to exist, then require the
+          # result to actually contain the current fingerprint.
+          if ! grep -qE '\*\*Fingerprint to trust:\*\* `[A-F0-9 ]+`' README.md; then
+            echo "Could not find the '**Fingerprint to trust:** \`...\`' line in README.md." >&2
+            echo "The sync pattern no longer matches; update this workflow or the README." >&2
+            exit 1
           fi
-      - uses: ad-m/github-push-action@v1.3.0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          sed -E -i "s|(\*\*Fingerprint to trust:\*\*) \`[A-F0-9 ]+\`|\1 \`$DOUBLE\`|g" README.md
+          if ! grep -qF "\`$DOUBLE\`" README.md; then
+            echo "README.md does not contain the expected fingerprint after substitution." >&2
+            exit 1
+          fi
+
+          if git diff --quiet -- README.md; then
+            echo "README already up to date (verified against keys/FINGERPRINT)."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "docs(readme): sync fingerprint from keys/FINGERPRINT [skip ci]"
+
+          # Rebase onto whatever landed while this job ran, then push directly
+          # rather than via a third-party action, so a lost race fails loudly.
+          branch="${GITHUB_REF_NAME}"
+          git fetch origin "$branch"
+          git rebase "origin/$branch"
+          git push origin "HEAD:$branch"
