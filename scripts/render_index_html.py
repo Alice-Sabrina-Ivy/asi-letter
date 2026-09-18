@@ -197,6 +197,105 @@ def ensure_signature(root: ET.Element) -> bool:
     return False
 
 
+def github_slug(text: str) -> str:
+    """Slugify a heading the way GitHub does.
+
+    Matching GitHub's rule is deliberate: the same anchor then resolves both on
+    the published site and on GitHub's own rendering of letter/*.md, so a link
+    someone saves keeps working in either place.
+
+    Lowercase, drop everything that is not a word character, hyphen or space,
+    then turn spaces into hyphens. (Punctuation vanishes rather than becoming a
+    separator, so "Why I'm writing - and why" yields a doubled hyphen exactly as
+    GitHub produces.)
+    """
+
+    slug = text.strip().lower()
+    slug = re.sub(r"[^\w\- ]", "", slug, flags=re.UNICODE)
+    return slug.replace(" ", "-")
+
+
+def add_heading_anchors(root: ET.Element) -> dict:
+    """Give every heading an id and return {normalized heading text: slug}.
+
+    Ids are derived from the heading text on every build, never stored, so
+    sections can be added, removed, reordered or reworded and the anchors simply
+    follow. Collisions get GitHub's -1/-2 suffix.
+    """
+
+    seen: dict = {}
+    index: dict = {}
+    for element in root.iter():
+        if element.tag not in {"h1", "h2", "h3", "h4"}:
+            continue
+        text = "".join(element.itertext()).strip()
+        if not text:
+            continue
+        base = github_slug(text)
+        count = seen.get(base, 0)
+        seen[base] = count + 1
+        slug = base if count == 0 else f"{base}-{count}"
+        element.set("id", slug)
+        index.setdefault(normalize(text), slug)
+    return index
+
+
+def link_table_of_contents(root: ET.Element, headings: dict) -> None:
+    """Turn the letter's Table of Contents entries into working links.
+
+    The TOC is hand-written prose inside the signed document, so it is matched
+    against the real headings at build time rather than assumed correct. An entry
+    that matches nothing raises instead of quietly rendering as plain text: a
+    silently half-linked contents page is exactly the kind of invisible
+    degradation this pipeline keeps getting bitten by.
+    """
+
+    children = list(root)
+    start = None
+    for position, child in enumerate(children):
+        if child.tag in {"h1", "h2", "h3"} and normalize("".join(child.itertext())) == "table of contents":
+            start = position
+            break
+    if start is None:
+        return
+
+    unmatched = []
+    for child in children[start + 1:]:
+        if child.tag in {"h1", "h2"}:
+            break  # end of the contents section
+        for item in child.iter("li"):
+            label = "".join(item.itertext()).strip()
+            if not label:
+                continue
+            key = normalize(label)
+            slug = headings.get(key)
+            if slug is None:
+                # The TOC often abbreviates a longer heading, e.g. the entry
+                # "On the Alice-after predictive model" for the heading
+                # "... (construction & validation)".
+                matches = [s for k, s in headings.items() if k.startswith(key)]
+                slug = matches[0] if len(matches) >= 1 else None
+            if slug is None:
+                unmatched.append(label)
+                continue
+
+            anchor = ET.Element("a", {"href": f"#{slug}"})
+            anchor.text = item.text
+            for sub in list(item):
+                item.remove(sub)
+                anchor.append(sub)
+            item.text = None
+            item.insert(0, anchor)
+
+    if unmatched:
+        raise SystemExit(
+            "Table of Contents entries do not match any heading:\n  "
+            + "\n  ".join(unmatched)
+            + "\n\nThe contents list is part of the signed letter. Either the entry or the "
+            "heading was reworded; make them agree in the next release."
+        )
+
+
 def add_link_attributes(root: ET.Element) -> None:
     for anchor in root.iter("a"):
         href = anchor.get("href", "")
@@ -265,6 +364,8 @@ def render_markdown(markdown_text: str) -> RenderResult:
         output_format="xhtml",
     )
     root = ET.fromstring(f"<div>{html}</div>")
+    headings = add_heading_anchors(root)
+    link_table_of_contents(root, headings)
     add_link_attributes(root)
     remove_canonical_paragraphs(root)
     signature_found = ensure_signature(root)
