@@ -51,12 +51,18 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install markdown
+      - name: Snapshot working tree before regenerating
+        run: |
+          git status --porcelain --untracked-files=all > /tmp/tree-before.txt
       - name: Regenerate release artifacts
         run: |
           python3 scripts/release.py
       - name: Verify release artifacts are clean
         run: |
           python3 scripts/release.py --check
+      - name: Verify every regenerated path is covered by the commit step
+        run: |
+          bash .github/scripts/assert_generated_paths.sh --baseline /tmp/tree-before.txt
       - name: Refresh site version metadata from manifest
         run: |
           python3 scripts/update_version_metadata.py --manifest letter/RELEASES.json docs/index.html
@@ -65,8 +71,10 @@ jobs:
           python3 scripts/update_version_metadata.py --manifest letter/RELEASES.json --check docs/index.html
       - name: Show working tree changes
         run: |
+          set -euo pipefail
+          read -r -a paths <<< "$(.github/scripts/generated_paths.sh)"
           git status --short
-          git diff --stat -- letter/RELEASES.json docs/letter.md docs/index.html
+          git diff --stat -- "${paths[@]}"
       - name: Wait for GitHub Pages to be idle
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -81,12 +89,20 @@ jobs:
           if [[ -z "${branch}" ]]; then
             branch="main"
           fi
+          # Single source of truth for what the pipeline generates. Hardcoding a
+          # subset here previously meant regenerated artifacts were committed for
+          # some paths and silently discarded for the rest.
+          read -r -a paths <<< "$(.github/scripts/generated_paths.sh)"
           dirty=0
-          git diff --quiet -- letter/RELEASES.json docs/letter.md docs/index.html || dirty=1
+          # --porcelain (not `git diff`) so newly created, still-untracked
+          # generated files count as changes too.
+          if [[ -n "$(git status --porcelain --untracked-files=all -- "${paths[@]}")" ]]; then
+            dirty=1
+          fi
           if [[ "${dirty}" == "1" ]]; then
             echo "Changes detected:"
             git status --short
-            git add -A letter/RELEASES.json docs/letter.md docs/index.html
+            git add -A -- "${paths[@]}"
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git commit -m "chore(manifest): refresh release assets [manifest-auto]"

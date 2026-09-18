@@ -134,6 +134,26 @@ wc -c < letter/ASI-Letter-v2026.07.24.md
 (`letter/ASI-Letter-v2025.11.20.md` genuinely contains CRLF in its blob, from a
 GitHub web upload. It is self-consistent and must be left alone.)
 
+### Committing generated artifacts in CI
+
+Any workflow that runs `scripts/release.py` and commits the result **must** take
+its path list from `.github/scripts/generated_paths.sh` rather than hardcoding
+one, and **must** run `.github/scripts/assert_generated_paths.sh --baseline <snapshot>`
+straight afterwards.
+
+`releases-manifest.yml` and `ots-upgrade.yml` both previously hardcoded a short
+list (`letter/RELEASES.json docs/letter.md docs/index.html`). Everything else the
+pipeline produced was regenerated in CI and then discarded at the commit step. On
+a new release that meant `docs/letter.md` advanced while `docs/letter.md.asc`
+did not — the site would serve the new letter text alongside the **previous**
+release's signature, and `docs/releases.json`, `sitemap.xml` and `llms.txt` would
+freeze. Worse, the dirty check tested only those three paths, so a change
+confined to the others skipped the commit entirely.
+
+This is invisible without the guard: `release.py --check` passes, because the
+same job just regenerated everything. Nothing fails; the published copies simply
+stop moving.
+
 ### Fingerprint format
 `FINGERPRINT` must be 40 uppercase hex characters, **no spaces**. The `sync-readme-fingerprint.yml` workflow auto-syncs the spaced display form in `README.md` from this file.
 
