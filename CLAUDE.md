@@ -87,6 +87,7 @@ Individual stages can be skipped with `--skip-sync`, `--skip-manifest`, `--skip-
 | `python3 scripts/render_index_html.py [--check]` | Pre-render letter Markdown into `docs/index.html` |
 | `python3 scripts/publish_latest_artifacts.py [--check]` | Publish signature/proof/key/manifest to `docs/` under stable names |
 | `python3 scripts/gen_discovery.py [--check]` | Regenerate `docs/sitemap.xml`, `docs/llms.txt`, `docs/.nojekyll` |
+| `python3 scripts/ping_indexnow.py [--dry-run]` | Announce updated URLs to search engines (run by CI after a release commit) |
 | `python3 scripts/find_latest_ots.py <dir>` | Output info about the newest `.ots` proof |
 | `bash scripts/verify-clearsign.sh` | Verify all `letter/*.asc` against `keys/FINGERPRINT` (binds to the key, rejects expired/revoked, checks payloads) |
 | `python3 scripts/check_signed_payload.py` | Verify each `letter/*.md` is the text its `.asc` actually signed |
@@ -185,6 +186,17 @@ confined to the others skipped the commit entirely.
 This is invisible without the guard: `release.py --check` passes, because the
 same job just regenerated everything. Nothing fails; the published copies simply
 stop moving.
+
+### Search discovery
+
+`docs/<key>.txt` is the IndexNow ownership credential. Its **name without `.txt`
+must equal its contents** — `ping_indexnow.py` finds it by that property, so there
+is no second copy to drift. The key is public by design; it is not a secret.
+
+Do not add it to `docs/sitemap.xml` or `RESOURCES` in `gen_discovery.py`.
+
+Rotating it means deleting the old file and creating a new self-matching one; the
+script needs no change.
 
 ### Fingerprint format
 `FINGERPRINT` must be 40 uppercase hex characters, **no spaces**. The `sync-readme-fingerprint.yml` workflow auto-syncs the spaced display form in `README.md` from this file.

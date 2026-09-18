@@ -133,6 +133,16 @@ jobs:
       # and GitHub deliberately does not start workflow runs from GITHUB_TOKEN
       # pushes. The documented fallback therefore did not exist. Dispatch it
       # explicitly instead, exactly as ots-upgrade.yml already does.
+      # A search for this project's own name returns only GitHub, and the single
+      # indexed copy of the site was four months stale. Organic recrawl of a small
+      # static site is slow, so announce changes rather than wait to be noticed.
+      # Non-fatal by design: a search engine being unreachable is not a release
+      # failure, and only a malformed submission (our bug) fails the job.
+      - name: Announce updated URLs to search engines (IndexNow)
+        if: steps.commit.outputs.committed == '1'
+        continue-on-error: true
+        run: python3 scripts/ping_indexnow.py
+
       - name: Trigger auto-release (only when the manifest actually changed)
         if: steps.commit.outputs.committed == '1'
         shell: bash
