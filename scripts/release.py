@@ -68,6 +68,12 @@ STAGES: List[Stage] = [
         skip_flag="skip_discovery",
         help_text="sitemap and llms.txt generation",
     ),
+    Stage(
+        name="Generate timestamp footer",
+        script="gen_timestamp_footer.py",
+        skip_flag="skip_timestamp",
+        help_text="the Bitcoin timestamp footer",
+    ),
 ]
 
 

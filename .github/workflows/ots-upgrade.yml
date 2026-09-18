@@ -436,65 +436,11 @@ jobs:
             printf 'status_line=%s\n' "$STATUS_SANITIZED"
           fi
 
-      - name: Ensure footer (scriptless, centered)
-        shell: bash
-        env:
-          STATUS_LINE: ${{ steps.status.outputs.status_line }}
-        run: |
-          set -euo pipefail
-
-          HTML="docs/index.html"
-          [[ -f "$HTML" ]] || { echo "Missing $HTML" >&2; exit 1; }
-
-          # Remove any prior OTS blocks or stray legacy script tags
-          perl -0777 -pe 's/<!-- OTS-START -->.*?<!-- OTS-END -->\s*//gs; s#<script id="ots-proof".*?</script>\s*##gs' -i "$HTML"
-
-          STATUS="${STATUS_LINE:-Bitcoin anchoring pending. Proof will update automatically.}"
-
-          OTS_BLOCK="$(
-            printf '%s\n' '<!-- OTS-START -->'
-            printf '%s\n' '<section id="timestamp-proof" style="max-width:48rem;margin:2rem auto 0 auto;padding-top:1rem;border-top:1px solid #e5e7eb;text-align:center;font-size:0.95rem;line-height:1.5;">'
-            printf '%s\n' '  <h3 style="margin:0 0 .5rem 0;font-size:1.05rem;">Timestamp proof (Bitcoin)</h3>'
-            printf '  <p id="ots-line">%s</p>\n' "${STATUS}"
-            printf '%s\n' '</section>'
-            printf '%s\n' '<!-- OTS-END -->'
-          )"
-
-          if ! perl -0777 -ne 'exit(!(m#</body>#i))' "$HTML"; then
-            echo "Missing </body> tag in $HTML; unable to insert OTS block." >&2
-            exit 1
-          fi
-
-          export OTS_BLOCK
-          perl -0777 -i -pe 'BEGIN { $block = $ENV{OTS_BLOCK} // "" } s#</body>#$block\n</body>#is' "$HTML"
-
-      - name: Rebase onto latest ${{ github.ref_name }} before committing
-        shell: bash
-        run: |
-          set -euo pipefail
-          branch="${TARGET_BRANCH:-${GITHUB_REF_NAME:-${GITHUB_REF#refs/heads/}}}"
-          git fetch origin "$branch"
-          git pull --rebase --autostash origin "$branch"
-
-      - name: Wait for GitHub Pages to be idle
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WAIT_FOR_PAGES_COMMIT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
-        run: .github/scripts/wait_for_pages_idle.sh
-
-      - name: Regenerate release artifacts to capture upgraded proof
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gnupg
-          python3 -m pip install --upgrade pip
-          python3 -m pip install markdown
-          git status --porcelain --untracked-files=all > /tmp/tree-before.txt
-          # Run every stage. With --skip-sync, stage 1 left docs/letter.md at
-          # whatever release it already held while stage 5 still republished the
-          # NEWEST letter's signature as docs/letter.md.asc -- so the site could
-          # serve one release's text beside another release's signature. Stage 1
-          # is idempotent, so running it here simply keeps the pair consistent.
-          python3 scripts/release.py
+      # The timestamp footer used to be assembled here with printf, from a block
+      # height read out of a SECOND, independent `ots upgrade` on a /tmp copy
+      # rather than from the proof being committed. scripts/gen_timestamp_footer.py
+      # (pipeline stage 7, already run above) now derives it from the committed
+      # letter/*.asc.ots, so the page and the published proof cannot disagree.
 
       - name: Verify every regenerated path is covered by the commit step
         run: |
