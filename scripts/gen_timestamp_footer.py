@@ -161,7 +161,6 @@ def render_footer(letter_dir: Path) -> str:
         f'  <p id="ots-line">{line}</p>'
         f"{extra}\n"
         '  <p id="ots-verify" style="font-size:0.9rem;">'
-        '<a href="letter.md.asc.ots">Download the proof</a> &middot; '
         f'<a href="{VERIFY_ANCHOR}" rel="noopener" target="_blank">How to verify it</a></p>\n'
         "</section>\n"
         f"{END}"
