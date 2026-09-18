@@ -31,6 +31,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -43,11 +44,22 @@ BASE_URL = "https://alice-sabrina-ivy.github.io/asi-letter/"
 SWH_SAVE = "https://archive.softwareheritage.org/api/1/origin/save/git/url/"
 WAYBACK_SAVE = "https://web.archive.org/save"
 
+# Save Page Now limits in-flight captures per account. 4 of 7 URLs came back
+# HTTP 429 when submitted back to back, so requests are paced and retried.
+WAYBACK_DELAY_SECONDS = 8.0
+RETRIES = 3
+
 
 def parse_args(argv: Iterable[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--docs-dir", type=Path, default=Path("docs"))
     parser.add_argument("--timeout", type=float, default=90.0)
+    parser.add_argument(
+        "--wayback-delay",
+        type=float,
+        default=WAYBACK_DELAY_SECONDS,
+        help="Seconds between Save Page Now submissions (avoids HTTP 429).",
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -97,7 +109,7 @@ def archive_software_heritage(timeout: float, dry_run: bool) -> None:
         print(f"  not archived: {exc}", file=sys.stderr)
 
 
-def archive_wayback(urls: List[str], timeout: float, dry_run: bool) -> None:
+def archive_wayback(urls: List[str], timeout: float, dry_run: bool, delay: float = WAYBACK_DELAY_SECONDS) -> None:
     print("\nWayback Machine (rendered pages)")
     access = os.environ.get("IA_ACCESS_KEY", "").strip()
     secret = os.environ.get("IA_SECRET_KEY", "").strip()
@@ -108,10 +120,17 @@ def archive_wayback(urls: List[str], timeout: float, dry_run: bool) -> None:
         print("  https://archive.org/account/s3.php and add them as repository secrets.")
         return
 
-    for url in urls:
+    # Save Page Now caps how many captures an account may have in flight.
+    # Submitting the whole sitemap back to back returned HTTP 429 for 4 of 7
+    # URLs, so pace the requests and back off when told to.
+    for position, url in enumerate(urls):
         if dry_run:
             print(f"  would submit {url}")
             continue
+
+        if position:
+            time.sleep(delay)
+
         data = urllib.parse.urlencode({"url": url, "capture_all": "1"}).encode()
         request = urllib.request.Request(
             WAYBACK_SAVE,
@@ -123,18 +142,36 @@ def archive_wayback(urls: List[str], timeout: float, dry_run: bool) -> None:
             },
             method="POST",
         )
-        try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
-                body = response.read().decode("utf-8", "replace")
+
+        for attempt in range(1, RETRIES + 1):
             try:
-                job = json.loads(body).get("job_id", "queued")
-            except json.JSONDecodeError:
-                job = "queued"
-            print(f"  submitted {url} ({job})")
-        except urllib.error.HTTPError as exc:
-            print(f"  failed {url}: HTTP {exc.code}", file=sys.stderr)
-        except Exception as exc:
-            print(f"  failed {url}: {exc}", file=sys.stderr)
+                with urllib.request.urlopen(request, timeout=timeout) as response:
+                    body = response.read().decode("utf-8", "replace")
+                try:
+                    job = json.loads(body).get("job_id", "queued")
+                except json.JSONDecodeError:
+                    job = "queued"
+                print(f"  submitted {url} ({job})")
+                break
+            except urllib.error.HTTPError as exc:
+                if exc.code == 429 and attempt < RETRIES:
+                    backoff = delay * (2 ** attempt)
+                    print(f"  rate limited on {url}; retrying in {backoff:.0f}s")
+                    time.sleep(backoff)
+                    continue
+                if exc.code in (401, 403):
+                    # Wrong or revoked keys: worth saying plainly rather than
+                    # burying it among transient failures.
+                    print(
+                        f"  rejected {url}: HTTP {exc.code} -- check IA_ACCESS_KEY / IA_SECRET_KEY",
+                        file=sys.stderr,
+                    )
+                    return
+                print(f"  failed {url}: HTTP {exc.code}", file=sys.stderr)
+                break
+            except Exception as exc:
+                print(f"  failed {url}: {exc}", file=sys.stderr)
+                break
 
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
@@ -147,7 +184,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         docs_dir = REPO_ROOT / docs_dir
 
     archive_software_heritage(args.timeout, args.dry_run)
-    archive_wayback(sitemap_urls(docs_dir), args.timeout, args.dry_run)
+    archive_wayback(sitemap_urls(docs_dir), args.timeout, args.dry_run, args.wayback_delay)
 
     # Always succeed: an archive being unavailable is not a release failure.
     print("\nDone (archive failures never fail the build).")
