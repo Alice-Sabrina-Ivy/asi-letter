@@ -88,6 +88,7 @@ Individual stages can be skipped with `--skip-sync`, `--skip-manifest`, `--skip-
 | `python3 scripts/publish_latest_artifacts.py [--check]` | Publish signature/proof/key/manifest to `docs/` under stable names |
 | `python3 scripts/gen_discovery.py [--check]` | Regenerate `docs/sitemap.xml`, `docs/llms.txt`, `docs/.nojekyll` |
 | `python3 scripts/ping_indexnow.py [--dry-run]` | Announce updated URLs to search engines (run by CI after a release commit) |
+| `python3 scripts/archive_release.py [--dry-run]` | Submit repo + site to public archives (run by CI on new letters and weekly) |
 | `python3 scripts/find_latest_ots.py <dir>` | Output info about the newest `.ots` proof |
 | `bash scripts/verify-clearsign.sh` | Verify all `letter/*.asc` against `keys/FINGERPRINT` (binds to the key, rejects expired/revoked, checks payloads) |
 | `python3 scripts/check_signed_payload.py` | Verify each `letter/*.md` is the text its `.asc` actually signed |
@@ -187,6 +188,24 @@ This is invisible without the guard: `release.py --check` passes, because the
 same job just regenerated everything. Nothing fails; the published copies simply
 stop moving.
 
+### Archiving
+
+`archive-release.yml` keeps the public archives current so the letter does not
+depend on this GitHub account surviving.
+
+* **Software Heritage** takes anonymous submissions (10/hour) and needs no
+  credentials, so it always runs.
+* **The Wayback Machine refuses anonymous Save Page Now requests** — HTTP 500
+  even from a real browser. To enable it, generate S3-style keys at
+  <https://archive.org/account/s3.php> and add them as repository secrets
+  `IA_ACCESS_KEY` and `IA_SECRET_KEY`. Until then the step reports that it was
+  skipped, and why. No code change is needed when the secrets appear.
+* **archive.today is not attempted**: it sits behind an interactive bot wall that
+  cannot be solved from CI. It has to be submitted by hand.
+
+Archive failures never fail the build — an archive being down is not a reason to
+fail a release, and the weekly run will retry.
+
 ### Search discovery
 
 `docs/<key>.txt` is the IndexNow ownership credential. Its **name without `.txt`
@@ -220,6 +239,7 @@ All workflows share concurrency group `letter-artifacts-${{ github.ref }}` to pr
 | `ots-upgrade.yml` | scheduled / push / workflow_run | Upgrades existing OTS proofs and refreshes footer status |
 | `ots-verify-upgrade.yml` | manual | Inspect + upgrade a single proof ad-hoc |
 | `sync-readme-fingerprint.yml` | push to `keys/FINGERPRINT`, manual | Normalizes fingerprint and patches `README.md` |
+| `archive-release.yml` | push to `letter/**`, weekly cron, manual | Submits the repo to Software Heritage and (with credentials) the site to the Wayback Machine |
 
 ### Auto-commit convention
 Automated commits include tags in their messages to prevent re-triggering loops:

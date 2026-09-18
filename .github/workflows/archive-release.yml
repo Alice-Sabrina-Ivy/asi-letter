@@ -1,0 +1,49 @@
+name: archive-release
+
+# Keeps the public archives current without anyone remembering to do it.
+#
+# Triggers, in order of importance:
+#   push to letter/**  a new signed release is the thing most worth archiving,
+#                      and that push comes from a human token, so it fires
+#                      (pushes made with GITHUB_TOKEN do not start workflows).
+#   schedule           a weekly safety net, so the archives stay fresh even if a
+#                      release lands some other way or a submission was dropped.
+#   workflow_dispatch  run it on demand.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "letter/**"
+  schedule:
+    # Weekly, offset off the hour to avoid the busiest cron minute.
+    - cron: "17 4 * * 1"
+  workflow_dispatch: {}
+
+# Deliberately NOT in the letter-artifacts concurrency group: this job only reads
+# the repo and talks to external archives, so it cannot race the jobs that mutate
+# release artifacts, and it should not consume that group's single queue slot.
+concurrency:
+  group: archive-release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      - name: Submit to public archives
+        env:
+          # Optional. Without these, the Wayback step reports that it was skipped
+          # and why; Software Heritage needs no credentials and always runs.
+          IA_ACCESS_KEY: ${{ secrets.IA_ACCESS_KEY }}
+          IA_SECRET_KEY: ${{ secrets.IA_SECRET_KEY }}
+        run: python3 scripts/archive_release.py
