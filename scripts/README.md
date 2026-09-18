@@ -67,6 +67,17 @@ Reads `letter/RELEASES.json`, selects the newest release, and rewrites known
 version placeholders (page title, data attributes, and HTML comments) in site
 artifacts such as `docs/index.html`.
 
+It also regenerates the schema.org JSON-LD block between the
+`<!-- structured-data:start -->` / `<!-- structured-data:end -->` markers in
+`docs/index.html`. That block carries `version` and `dateModified`, so it is
+rebuilt wholesale on every run rather than hand-maintained. `datePublished` is
+derived from the *oldest* manifest entry, `version`/`dateModified` from the
+newest. The payload is serialized with `json.dumps` (not string-built) so values
+are escaped correctly inside the `<script>` element.
+
+The Open Graph and Twitter tags in `<head>` deliberately contain no version
+string, so they need no automation and cannot go stale.
+
 ```
 python3 scripts/update_version_metadata.py [--manifest PATH] [--check] [targets...]
 ```

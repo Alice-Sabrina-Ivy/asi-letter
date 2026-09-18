@@ -15,7 +15,7 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = Path("letter/RELEASES.json")
@@ -26,6 +26,17 @@ _GOOGLE_SITE_VERIFICATION = "9SLdoDdcbXCFMDwBI_Cx9ZpXR5PC6_WdGCc07_5lXcc"
 _GOOGLE_SITE_META = (
     f'<meta name="google-site-verification" content="{_GOOGLE_SITE_VERIFICATION}">'
 )
+
+# Structured data (schema.org JSON-LD). The block between these markers is
+# regenerated wholesale rather than patched field by field: it carries the
+# release version and modification date, so hand-editing it guarantees drift,
+# and regex-patching values inside JSON embedded in HTML is fragile.
+_SD_START = "<!-- structured-data:start -->"
+_SD_END = "<!-- structured-data:end -->"
+
+_SITE_URL = "https://alice-sabrina-ivy.github.io/asi-letter/"
+_FINGERPRINT = "2C101FA70F42F93052F82FC755387365B7949796"
+_IMAGE_URL = _SITE_URL + "assets/asi-handshake-social-gen-1280x640.jpg"
 
 
 @dataclass
@@ -105,6 +116,107 @@ def select_latest_version(manifest: dict) -> VersionInfo:
     return VersionInfo(raw=version)
 
 
+def select_first_version(manifest: dict) -> VersionInfo:
+    """Return the oldest release, used as the work's datePublished."""
+
+    releases = manifest.get("releases")
+    if not releases:
+        raise SystemExit("No releases listed in manifest.")
+
+    def key(entry: dict) -> Tuple[int, int, int]:
+        version = entry.get("version")
+        if not isinstance(version, str) or not _VERSION_RX.fullmatch(version):
+            raise SystemExit(f"Unexpected version format: {version!r}")
+        return tuple(int(part) for part in version.split("."))  # type: ignore[return-value]
+
+    return VersionInfo(raw=min(releases, key=key)["version"])
+
+
+def _as_iso_date(version: VersionInfo) -> str:
+    """Convert a vYYYY.MM.DD release version into an ISO date."""
+
+    return version.raw.lstrip("v").replace(".", "-")
+
+
+def render_structured_data(latest: VersionInfo, first: VersionInfo, indent: str) -> str:
+    """Build the schema.org JSON-LD block, marker to marker.
+
+    The payload is assembled as a dict and serialized with json.dumps so that
+    every value is correctly escaped -- this lands inside a <script> element in
+    an HTML document, and hand-built JSON would be one stray quote away from
+    breaking the page.
+    """
+
+    payload = {
+        "@context": "https://schema.org",
+        "@type": "CreativeWork",
+        "name": "ASI Letter",
+        "description": (
+            "A versioned, cryptographically signed, bilateral consent framework "
+            "for human-ASI collaboration."
+        ),
+        "url": _SITE_URL,
+        "version": latest.raw,
+        "datePublished": _as_iso_date(first),
+        "dateModified": _as_iso_date(latest),
+        "inLanguage": "en",
+        "license": "https://creativecommons.org/licenses/by/4.0/",
+        "isAccessibleForFree": True,
+        "image": _IMAGE_URL,
+        "author": {
+            "@type": "Person",
+            "name": "Alice Sabrina Ivy",
+            # openpgp4fpr is the standard URI form for an OpenPGP fingerprint
+            # (as used by Keyoxide and Wikidata). This is the assertion that
+            # binds document -> person -> signing key for machine readers.
+            "identifier": f"openpgp4fpr:{_FINGERPRINT}",
+            "sameAs": ["https://github.com/Alice-Sabrina-Ivy"],
+        },
+        "encoding": [
+            {
+                "@type": "MediaObject",
+                "contentUrl": _SITE_URL + "letter.md",
+                "encodingFormat": "text/markdown",
+            },
+            {
+                "@type": "MediaObject",
+                "contentUrl": _SITE_URL + "letter.md.asc",
+                "encodingFormat": "application/pgp-signature",
+            },
+        ],
+    }
+
+    body = json.dumps(payload, indent=2, ensure_ascii=False)
+    # A literal "</script>" inside JSON would terminate the element early.
+    body = body.replace("</", "<\\/")
+    body = "\n".join(f"{indent}{line}" if line else line for line in body.splitlines())
+
+    return (
+        f"{indent}{_SD_START}\n"
+        f'{indent}<script type="application/ld+json">\n'
+        f"{body}\n"
+        f"{indent}</script>\n"
+        f"{indent}{_SD_END}"
+    )
+
+
+def ensure_structured_data(text: str, latest: VersionInfo, first: VersionInfo) -> Tuple[str, int]:
+    """Regenerate the JSON-LD block between the structured-data markers."""
+
+    pattern = re.compile(
+        r"(?P<indent>^[ \t]*)" + re.escape(_SD_START) + r".*?" + re.escape(_SD_END),
+        flags=re.DOTALL | re.MULTILINE,
+    )
+    match = pattern.search(text)
+    if match is None:
+        return text, 0
+
+    block = render_structured_data(latest, first, match.group("indent"))
+    if match.group(0) == block:
+        return text, 0
+    return text[: match.start()] + block + text[match.end() :], 1
+
+
 def substitute_version_markers(text: str, version: VersionInfo) -> Tuple[str, int]:
     """Replace known placeholders with the latest version.
 
@@ -172,10 +284,19 @@ def ensure_google_site_verification(text: str) -> Tuple[str, int]:
     return text, 0
 
 
-def process_file(path: Path, version: VersionInfo, check_only: bool, allow_missing: bool) -> bool:
+def process_file(
+    path: Path,
+    version: VersionInfo,
+    check_only: bool,
+    allow_missing: bool,
+    first_version: Optional[VersionInfo] = None,
+) -> bool:
     text = path.read_text(encoding="utf-8")
     updated, matches = substitute_version_markers(text, version)
     updated, meta_added = ensure_google_site_verification(updated)
+    sd_changed = 0
+    if first_version is not None:
+        updated, sd_changed = ensure_structured_data(updated, version, first_version)
     if matches == 0:
         message = (
             f"No version markers found in {path}. Add a release-version marker or "
@@ -186,7 +307,7 @@ def process_file(path: Path, version: VersionInfo, check_only: bool, allow_missi
             return False
         raise SystemExit(message)
 
-    if updated != text or meta_added:
+    if updated != text or meta_added or sd_changed:
         if check_only:
             return True
         path.write_text(updated, encoding="utf-8")
@@ -199,13 +320,20 @@ def main(argv: Iterable[str]) -> int:
     manifest_path = resolve_path(args.manifest)
     manifest = load_manifest(manifest_path)
     version = select_latest_version(manifest)
+    first_version = select_first_version(manifest)
 
     any_changes = False
     for target in args.targets:
         target_path = resolve_path(target)
         if not target_path.exists():
             raise SystemExit(f"Target not found: {target_path}")
-        changed = process_file(target_path, version, args.check, args.allow_missing_markers)
+        changed = process_file(
+            target_path,
+            version,
+            args.check,
+            args.allow_missing_markers,
+            first_version=first_version,
+        )
         any_changes = any_changes or changed
         if args.check and changed:
             try:
