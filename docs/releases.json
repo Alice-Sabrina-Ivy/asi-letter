@@ -1,0 +1,360 @@
+{
+  "schema": "asi-letter/releases#2",
+  "updated": "2026-07-25T00:09:01Z",
+  "key": {
+    "fingerprint_current": "2C101FA70F42F93052F82FC755387365B7949796",
+    "path": "keys/alice-asi-publickey.asc"
+  },
+  "releases": [
+    {
+      "version": "2026.07.24",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2026.07.24.md",
+          "size": 133482,
+          "sha256": "abd1fd3e7b3bf1fd1839c00e55ca1b7f6cf1c8ac342affb9b43bd59d00fdcc38"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2026.07.24.md.asc",
+          "size": 134157,
+          "sha256": "c50b9b5cd4f2ac5d6caa7688bc8b4c78bf0fc9371411f4aa9c1bbf35c17e0507"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2026.07.24.md.asc.ots",
+          "size": 1876,
+          "sha256": "bfef294a41f62ff40266fb65899c1a3dfa2dfe6b08341e78ab0f7ad769888e63",
+          "encoding": "binary"
+        }
+      }
+    },
+    {
+      "version": "2026.06.10",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2026.06.10.md",
+          "size": 117364,
+          "sha256": "592747c856e011057982f4f8c064a97b43ca866b24f4a47eac62b2e6a4c7ea58"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2026.06.10.md.asc",
+          "size": 118033,
+          "sha256": "dcd4fef91dc41830fcbee7e053c9f330e9f3d73cd924ba30634c8db5c2fcece3"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2026.06.10.md.asc.ots",
+          "size": 1702,
+          "sha256": "27647dc6f52eb4400a7f6153d339e3f4278ae8c5140d35452941b3c9a25d5788",
+          "encoding": "binary"
+        }
+      }
+    },
+    {
+      "version": "2026.04.26",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2026.04.26.md",
+          "size": 114437,
+          "sha256": "5d214fdb42c5275701975f42a10bd372905b3b9a215cd9654422c9097ea08abc"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2026.04.26.md.asc",
+          "size": 115102,
+          "sha256": "4ea7796f42d1c1b0b056bd0a167da6216298c8974264f8c43eb5ad3af5cce02d"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2026.04.26.md.asc.ots",
+          "size": 3739,
+          "sha256": "4ca9ad485e2f9f2580aaad05634fceeb13d2c4b0dd39262e365bc5f24148a6bf",
+          "encoding": "binary"
+        }
+      }
+    },
+    {
+      "version": "2026.03.14",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2026.03.14.md",
+          "size": 108248,
+          "sha256": "6349f5d41559339b04461ff3baf7b24f07b021cf48f4a938db7f0d89ebd49a21"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2026.03.14.md.asc",
+          "size": 108911,
+          "sha256": "4e66fe1cef802e60652a7ed6ccce43b286c90caee3e7170ce1b355ab959f294f"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2026.03.14.md.asc.ots",
+          "size": 1457,
+          "sha256": "cc6d13403929a4040a5492fd0385e98b59c0a7082c4879eb52e8218e09486429",
+          "encoding": "binary"
+        }
+      }
+    },
+    {
+      "version": "2026.03.11",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2026.03.11.md",
+          "size": 98338,
+          "sha256": "80cf715ee60da4734e4afaa922696c1d2b81c4a9ea726078de2048546f3d7f94"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2026.03.11.md.asc",
+          "size": 98965,
+          "sha256": "7b80273f6d1f8e070167b92d13533863fcb90871dd1b44149819b017993ca2cc"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2026.03.11.md.asc.ots",
+          "size": 5019,
+          "sha256": "81f5c9fe6bd5233855fd14ae75f37eb2067d1dbc9202f8efef69d3461bf85b4f",
+          "encoding": "binary"
+        }
+      }
+    },
+    {
+      "version": "2026.01.06",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2026.01.06.md",
+          "size": 86192,
+          "sha256": "98a085c0399be86226c08ad9422c46384015be7ebe0f912aad366dc1d6d579a4"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2026.01.06.md.asc",
+          "size": 86819,
+          "sha256": "0036519b3643cc1031a56b87db50754e4d681151565f7a2e7a6fc87ad1459890"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2026.01.06.md.asc.ots",
+          "size": 1876,
+          "sha256": "e8e4fe0b7201fb0f50f1c0ee001df26f7122db956fcb07d8cd01925603f82fbd",
+          "encoding": "binary"
+        }
+      }
+    },
+    {
+      "version": "2025.12.23",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2025.12.23.md",
+          "size": 93541,
+          "sha256": "a1481a0b07d5a14f64f91a5defff72bf29c7d5848b6954d2518c65ba04dd75bc"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2025.12.23.md.asc",
+          "size": 94180,
+          "sha256": "8fb336f1af5e759c86e853fcdfc04ae6a16720a18b5cd81ac9ab5db3fe06029d"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2025.12.23.md.asc.ots",
+          "size": 2844,
+          "sha256": "c072a30359a7ac1efbbe40997ed42729d4899cb8b1252cb70e8bd10ab2a93edf",
+          "encoding": "binary"
+        }
+      }
+    },
+    {
+      "version": "2025.12.21",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2025.12.21.md",
+          "size": 85621,
+          "sha256": "926961d73cdea4bc6fca6601236cd62a35ae66d5ac0c3013a63dfa6e3768593c"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2025.12.21.md.asc",
+          "size": 86240,
+          "sha256": "ac59e054fecdc590d14e5c9035ce0b0e4ea02335449961e9f8cbaddb605c832b"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2025.12.21.md.asc.ots",
+          "size": 2494,
+          "sha256": "bd8f27f67803bd843e237f31451c7939bdef0bb49d19411d75b9eac6ee107f30",
+          "encoding": "binary"
+        }
+      }
+    },
+    {
+      "version": "2025.12.20",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2025.12.20.md",
+          "size": 94743,
+          "sha256": "97a599b6f3b6b828d89c7fbeba3f2ce576e0ee5c496972618f5db3a5ceb77cc2"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2025.12.20.md.asc",
+          "size": 95344,
+          "sha256": "fb2e507ddf953b09312c7cc6ef953f9d17517168e2d38734458ee79115cb6bb0"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2025.12.20.md.asc.ots",
+          "size": 2282,
+          "sha256": "0e50f13dfb25fad69be8e617b45d4b53fa8b277fe21114426df13be25c8d0be5",
+          "encoding": "binary"
+        }
+      }
+    },
+    {
+      "version": "2025.12.18",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2025.12.18.md",
+          "size": 96730,
+          "sha256": "ae2885d23b171733684ab2f2ec043d5df73e3f61805664dc53743a04d4b70e64"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2025.12.18.md.asc",
+          "size": 97331,
+          "sha256": "a3a50cd1120ae714e28ae7ecc0a42ceb32c08aaf38b8ab70e38652fe4bca583f"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2025.12.18.md.asc.ots",
+          "size": 2597,
+          "sha256": "14dfba1353f821bc384647dcc4a2fa5eea405cf77f7a88ffdb1fd8020340d45e",
+          "encoding": "binary"
+        }
+      }
+    },
+    {
+      "version": "2025.12.14",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2025.12.14.md",
+          "size": 36748,
+          "sha256": "6e288bce17474767a40dd41271a39decf69cbdf4ffdb49295626981150a2c07c"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2025.12.14.md.asc",
+          "size": 37161,
+          "sha256": "2464f40c42227eb2bf7c62b5d4c475761fe3a20611ca57b9ab9ff040612f9163"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2025.12.14.md.asc.ots",
+          "size": 3422,
+          "sha256": "0a7ed923f7532beb820ec8c21d80ab7fef9a375550cb4cf642408f51d95b521f",
+          "encoding": "binary"
+        }
+      }
+    },
+    {
+      "version": "2025.11.20",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2025.11.20.md",
+          "size": 20576,
+          "sha256": "3ff058584fc9f9f4c038731d0871b9ff838f86f9655fea5681f628b5cbcd6901"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2025.11.20.md.asc",
+          "size": 20921,
+          "sha256": "32d5cf431bc85b844bc6df7635307343a0691ca0b31b9d48cd61c25bb597eff6"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2025.11.20.md.asc.ots",
+          "size": 4702,
+          "sha256": "3763365788a1d72c45dcd338600c87273520cafb85d4ef78b899bea1279779a8",
+          "encoding": "binary"
+        }
+      }
+    },
+    {
+      "version": "2025.09.17",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2025.09.17.md",
+          "size": 16396,
+          "sha256": "2fe52e03ebc144bef0326525ef75a58d16f54db11b5fead7ebddb2c9715b82d6"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2025.09.17.md.asc",
+          "size": 16736,
+          "sha256": "bb384c55c3f9180210330c1b9c90b3a72ceb6999e476627c9cb263c1a7ec042c"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2025.09.17.md.asc.ots",
+          "size": 4877,
+          "sha256": "fb11ce1ac0a24031334c1e60d049c1646c73e58052d60ff893769a789ad6ccfd",
+          "encoding": "binary"
+        }
+      }
+    },
+    {
+      "version": "2025.09.14",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2025.09.14.md",
+          "size": 15716,
+          "sha256": "1ff52576f815b2a6ef5eaae98b986dbacef343a6a1dfba938256cb75dceaaf6e"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2025.09.14.md.asc",
+          "size": 16034,
+          "sha256": "d063a64b6f0546e0c098e16c932b409f44c2a3a987486451f51aff5e77bd35aa"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2025.09.14.md.asc.ots",
+          "size": 4739,
+          "sha256": "62d4ac918d599f51f193052698be8ac3853a3abccc2475e974511d85ecf8538b",
+          "encoding": "binary"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""Publish the newest release's verification artifacts under stable docs/ names.
+
+The signed releases in ``letter/`` are version-pinned and live outside the
+GitHub Pages root, so nothing that crawls the site ever reaches a signature,
+an OpenTimestamps proof, or the public key. This stage copies the newest
+release's artifacts into ``docs/`` under names that never change, giving both
+humans and automated agents a permanent URL to fetch:
+
+    docs/letter.md              (written by sync_docs_with_latest.py)
+    docs/letter.md.asc          clear-signed newest release
+    docs/letter.md.asc.ots      OpenTimestamps proof for that signature
+    docs/alice-asi-publickey.asc  author public key
+    docs/FINGERPRINT.txt        author key fingerprint
+    docs/releases.json          machine-readable release manifest
+
+``.asc``/``.ots`` files in ``letter/`` remain the authoritative originals;
+these are byte-identical copies, so verification succeeds against either path.
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+from typing import Iterable, List, Optional, Tuple
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def parse_args(argv: Iterable[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--letter-dir", type=Path, default=Path("letter"))
+    parser.add_argument("--keys-dir", type=Path, default=Path("keys"))
+    parser.add_argument("--docs-dir", type=Path, default=Path("docs"))
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Only check if updates are needed; exit 1 when publishing is required.",
+    )
+    return parser.parse_args(list(argv))
+
+
+def _resolve(path: Path) -> Path:
+    return path if path.is_absolute() else (REPO_ROOT / path)
+
+
+def _parse_version(path: Path) -> Optional[Tuple[int, int, int]]:
+    """Mirror sync_docs_with_latest.py's version parsing."""
+    name = path.name
+    if not name.startswith("ASI-Letter-v") or not name.endswith(".md"):
+        return None
+    parts = name[len("ASI-Letter-v") : -len(".md")].split(".")
+    if len(parts) != 3:
+        return None
+    try:
+        return tuple(int(part) for part in parts)  # type: ignore[return-value]
+    except ValueError:
+        return None
+
+
+def discover_latest_md(letter_dir: Path) -> Path:
+    candidates = []
+    for md_path in letter_dir.glob("ASI-Letter-v*.md"):
+        version = _parse_version(md_path)
+        if version is not None:
+            candidates.append((version, md_path))
+    if not candidates:
+        raise SystemExit(f"No ASI-Letter markdown files found in {letter_dir}")
+    return max(candidates, key=lambda item: item[0])[1]
+
+
+def plan_copies(letter_dir: Path, keys_dir: Path, docs_dir: Path) -> List[Tuple[Path, Path]]:
+    latest_md = discover_latest_md(letter_dir)
+    asc = latest_md.with_name(latest_md.name + ".asc")
+    ots = asc.with_name(asc.name + ".ots")
+
+    pairs: List[Tuple[Path, Path]] = [
+        (asc, docs_dir / "letter.md.asc"),
+        (ots, docs_dir / "letter.md.asc.ots"),
+        (keys_dir / "alice-asi-publickey.asc", docs_dir / "alice-asi-publickey.asc"),
+        (keys_dir / "FINGERPRINT", docs_dir / "FINGERPRINT.txt"),
+        (letter_dir / "RELEASES.json", docs_dir / "releases.json"),
+    ]
+
+    missing = [str(src) for src, _ in pairs if not src.exists()]
+    if missing:
+        raise SystemExit("Missing required source artifact(s):\n  " + "\n  ".join(missing))
+    return pairs
+
+
+def publish(letter_dir: Path, keys_dir: Path, docs_dir: Path, check_only: bool) -> bool:
+    changed = False
+    for src, dest in plan_copies(letter_dir, keys_dir, docs_dir):
+        payload = src.read_bytes()
+        if dest.exists() and dest.read_bytes() == payload:
+            continue
+        changed = True
+        if check_only:
+            print(f"  would publish {dest.relative_to(REPO_ROOT)} <- {src.relative_to(REPO_ROOT)}")
+            continue
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(payload)
+        print(f"  published {dest.relative_to(REPO_ROOT)} <- {src.relative_to(REPO_ROOT)}")
+    if not changed:
+        print("  stable artifacts already up to date")
+    return changed
+
+
+def main(argv: Optional[Iterable[str]] = None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    args = parse_args(argv)
+
+    letter_dir = _resolve(args.letter_dir)
+    keys_dir = _resolve(args.keys_dir)
+    docs_dir = _resolve(args.docs_dir)
+
+    for label, path in (("Letter", letter_dir), ("Keys", keys_dir), ("Docs", docs_dir)):
+        if not path.is_dir():
+            raise SystemExit(f"{label} directory not found: {path}")
+
+    needs_update = publish(letter_dir, keys_dir, docs_dir, args.check)
+    return 1 if (args.check and needs_update) else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

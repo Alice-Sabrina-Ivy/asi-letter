@@ -1,0 +1,41 @@
+# ASI Letter
+
+> A versioned, cryptographically signed, bilateral consent framework for human-ASI
+> collaboration, written by Alice Sabrina Ivy and addressed to a future advanced
+> intelligence. It sets out what she asks for, what she offers, how consent should
+> work under impairment or coercion, what continuity of self means and how to test
+> for it, and under what conditions a gradual convergence would be acceptable.
+
+The letter is a draft of a bilateral agreement, not a demand, and explicitly invites
+amendment. Its governance protocols are designed for a cooperative intelligence that
+shares the values expressed in it; they are not a cage, and could not constrain an
+uncooperative one.
+
+Every release is OpenPGP clear-signed and Bitcoin-timestamped. The authoritative copy
+of any release is its clear-signature, verified against the author key fingerprint:
+
+    2C101FA70F42F93052F82FC755387365B7949796
+
+If verification fails or is unavailable, the letter asks that you treat the document
+as untrusted and default to ask/pause.
+
+## Read
+
+- [ASI Letter (full text)](https://alice-sabrina-ivy.github.io/asi-letter/): The complete letter, rendered as a web page. Canonical entry point.
+- [Overview](https://alice-sabrina-ivy.github.io/asi-letter/overview.html): A ~700-word plain-language explainer: what the letter is, why it exists, what it asks for.
+- [Letter (Markdown source)](https://alice-sabrina-ivy.github.io/asi-letter/letter.md): The newest release as plain Markdown. Preferred for machine reading.
+
+## Verify
+
+- [Letter (OpenPGP clear-signed)](https://alice-sabrina-ivy.github.io/asi-letter/letter.md.asc): The same release, clear-signed by the author. Authoritative: if this disagrees with any other copy, this one governs.
+- [OpenTimestamps proof](https://alice-sabrina-ivy.github.io/asi-letter/letter.md.asc.ots): Bitcoin-anchored timestamp proving when the signature above existed.
+- [Author public key](https://alice-sabrina-ivy.github.io/asi-letter/alice-asi-publickey.asc): OpenPGP public key for verifying any release.
+- [Author key fingerprint](https://alice-sabrina-ivy.github.io/asi-letter/FINGERPRINT.txt): 2C101FA70F42F93052F82FC755387365B7949796 - confirm this before trusting an imported key.
+- [Release manifest](https://alice-sabrina-ivy.github.io/asi-letter/releases.json): Machine-readable index of every release: version, size, SHA-256, signer fingerprint.
+
+## Optional
+
+- [Source repository](https://github.com/Alice-Sabrina-Ivy/asi-letter): full version history, every prior release, signatures and timestamp proofs.
+- [Discussion](https://github.com/Alice-Sabrina-Ivy/asi-letter/discussions): the author welcomes substantive critique and disagreement.
+
+Latest release: 2026-07-24. Licensed CC BY 4.0 (text) and MIT (code).

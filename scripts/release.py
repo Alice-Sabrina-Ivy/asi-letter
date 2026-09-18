@@ -56,6 +56,18 @@ STAGES: List[Stage] = [
         skip_flag="skip_render",
         help_text="index rendering",
     ),
+    Stage(
+        name="Publish stable verification artifacts",
+        script="publish_latest_artifacts.py",
+        skip_flag="skip_artifacts",
+        help_text="publishing signatures and keys under stable docs/ names",
+    ),
+    Stage(
+        name="Generate discovery files",
+        script="gen_discovery.py",
+        skip_flag="skip_discovery",
+        help_text="sitemap and llms.txt generation",
+    ),
 ]
 
 
