@@ -76,8 +76,12 @@ for f in letter/*.asc; do
   # "-----END PGP SIGNATURE-----" and still verify clean. Anyone reading the .asc
   # as a document would see that text as if it were signed. Require the armor to
   # be the whole file.
-  first_line=$(grep -m1 -v '^[[:space:]]*$' "$f" || true)
-  last_line=$(grep -v '^[[:space:]]*$' "$f" | tail -n1 || true)
+  # Strip CR: OpenPGP armor legitimately uses CRLF line endings, and 13 of the 14
+  # .asc files here do. Git Bash's grep drops the CR while GNU grep on Linux keeps
+  # it as part of the line, so comparing the raw line passed locally and failed on
+  # every file in CI.
+  first_line=$(grep -m1 -v '^[[:space:]]*$' "$f" | tr -d '\r' || true)
+  last_line=$(grep -v '^[[:space:]]*$' "$f" | tail -n1 | tr -d '\r' || true)
   if [[ "$first_line" != "-----BEGIN PGP SIGNED MESSAGE-----" ]]; then
     echo "FAIL $f: content before the clear-signed block (unsigned text would read as signed)"
     fail=1
