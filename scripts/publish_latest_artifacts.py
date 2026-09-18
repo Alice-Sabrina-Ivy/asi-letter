@@ -16,6 +16,14 @@ humans and automated agents a permanent URL to fetch:
 
 ``.asc``/``.ots`` files in ``letter/`` remain the authoritative originals;
 these are byte-identical copies, so verification succeeds against either path.
+(``.asc`` and ``.ots`` are marked ``-text`` in .gitattributes so they survive
+check-in byte for byte and keep matching the hashes in RELEASES.json.)
+
+This stage also refreshes ``scripts/asi-public.asc``, the convenience copy of
+the public key that ``verify-clearsign.sh`` imports. It is a hand-maintained
+duplicate that had already drifted: it still carried the key export that
+expired 2026-09-15, so CI was importing an expired key and verifying every
+release against it. Deriving it here means it cannot drift again.
 """
 
 from __future__ import annotations
@@ -75,12 +83,16 @@ def plan_copies(letter_dir: Path, keys_dir: Path, docs_dir: Path) -> List[Tuple[
     asc = latest_md.with_name(latest_md.name + ".asc")
     ots = asc.with_name(asc.name + ".ots")
 
+    public_key = keys_dir / "alice-asi-publickey.asc"
+
     pairs: List[Tuple[Path, Path]] = [
         (asc, docs_dir / "letter.md.asc"),
         (ots, docs_dir / "letter.md.asc.ots"),
-        (keys_dir / "alice-asi-publickey.asc", docs_dir / "alice-asi-publickey.asc"),
+        (public_key, docs_dir / "alice-asi-publickey.asc"),
         (keys_dir / "FINGERPRINT", docs_dir / "FINGERPRINT.txt"),
         (letter_dir / "RELEASES.json", docs_dir / "releases.json"),
+        # Convenience copy imported by verify-clearsign.sh; derived, not edited.
+        (public_key, REPO_ROOT / "scripts" / "asi-public.asc"),
     ]
 
     missing = [str(src) for src, _ in pairs if not src.exists()]
