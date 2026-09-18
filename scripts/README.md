@@ -12,7 +12,7 @@ the related continuous validation jobs in more detail.
 ### `release.py`
 
 ```
-python3 scripts/release.py [--check|--dry-run] [--skip-sync] [--skip-manifest] [--skip-metadata] [--skip-render] [--skip-artifacts] [--skip-discovery]
+python3 scripts/release.py [--check|--dry-run] [--skip-sync] [--skip-manifest] [--skip-metadata] [--skip-render] [--skip-artifacts] [--skip-discovery] [--skip-timestamp]
 ```
 
 * Runs the scripts in the following order, aborting on the first failure:
@@ -22,6 +22,7 @@ python3 scripts/release.py [--check|--dry-run] [--skip-sync] [--skip-manifest] [
   4. `render_index_html.py`
   5. `publish_latest_artifacts.py`
   6. `gen_discovery.py`
+  7. `gen_timestamp_footer.py`
 * Pass `--check` or `--dry-run` to forward the read-only mode supported by the
   underlying tools. This is useful in CI or when verifying that the working tree
   is already up to date.
@@ -154,6 +155,31 @@ so they cannot drift apart or go stale:
 ```
 python3 scripts/gen_discovery.py [--manifest PATH] [--docs-dir PATH] [--check]
 ```
+
+### `gen_timestamp_footer.py`
+
+Rebuilds the Bitcoin timestamp footer between the `<!-- OTS-START -->` /
+`<!-- OTS-END -->` markers in `docs/index.html`.
+
+```
+python3 scripts/gen_timestamp_footer.py [--letter-dir PATH] [--index PATH] [--check]
+```
+
+It reads block heights from the committed `letter/*.asc.ots` files. The footer
+used to be assembled with `printf` inside `ots-upgrade.yml` from a height read
+out of a *second, independent* `ots upgrade` on a `/tmp` copy — two sources of
+truth for one claim — so the page could disagree with the published proof.
+
+Two details worth keeping:
+
+* **No dependency on the opentimestamps client.** A Bitcoin attestation is a
+  fixed 8-byte tag followed by two varints, so heights are read straight from the
+  bytes. Verified to agree exactly with the library on every proof in the repo.
+* **It reports the EARLIEST attestation, not the highest.** A proof may carry
+  attestations from several calendars (the first release has four). The claim is
+  "existed prior to this block", so the earliest is the tightest true statement.
+  `.github/scripts/extract_block_height.py` reports the highest — still true, but
+  weaker.
 
 ## Signing and verification helpers
 
