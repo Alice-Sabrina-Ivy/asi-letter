@@ -74,14 +74,14 @@ def resolve_path(path: Path) -> Path:
     return path if path.is_absolute() else (REPO_ROOT / path)
 
 
-def require_markdown() -> "markdown":
+def require_markdown_it() -> "markdown_it":
     try:
-        import markdown  # type: ignore[import-not-found]
+        import markdown_it  # type: ignore[import-not-found]
     except ImportError as exc:
         raise SystemExit(
-            "Missing dependency: install the 'markdown' package (pip install markdown)."
+            "Missing dependency: install the 'markdown-it-py' package (pip install markdown-it-py)."
         ) from exc
-    return markdown
+    return markdown_it
 
 
 def normalize(text: str) -> str:
@@ -334,35 +334,20 @@ def insert_cta(root: ET.Element) -> None:
                 return
     root.append(cta_element)
 
-def ensure_blank_line_before_lists(text: str) -> str:
-    """Insert a blank line before list items that immediately follow a non-list line.
-
-    Python-Markdown requires a blank line before the start of a list when it
-    follows a paragraph; without it the list markers are rendered as inline text.
-    """
-    lines = text.split("\n")
-    result: list[str] = []
-    for i, line in enumerate(lines):
-        if (
-            i > 0
-            and re.match(r"^[ \t]*[-*+]\s", line)
-            and result
-            and result[-1].strip()
-            and not re.match(r"^[ \t]*[-*+]\s", result[-1])
-        ):
-            result.append("")
-        result.append(line)
-    return "\n".join(result)
-
-
 def render_markdown(markdown_text: str) -> RenderResult:
-    markdown = require_markdown()
-    markdown_text = ensure_blank_line_before_lists(markdown_text)
-    html = markdown.markdown(
-        markdown_text,
-        extensions=["extra", "sane_lists", "tables"],
-        output_format="xhtml",
-    )
+    """Render with CommonMark (plus GFM tables), the dialect GitHub uses.
+
+    This used Python-Markdown, which only nests a list under 4-space indentation.
+    The letter nests with 2-3 spaces, which CommonMark and GitHub accept, so the
+    site silently flattened nested lists: axiom precedence tiers 2 and 3 rendered
+    as stray text inside a bullet, and Phase 5's conditions fell out of Phase 5.
+    Using the same dialect as GitHub keeps the page structurally identical to the
+    signed Markdown as GitHub displays it.
+    """
+
+    markdown_it = require_markdown_it()
+    renderer = markdown_it.MarkdownIt("commonmark", {"xhtmlOut": True}).enable("table")
+    html = renderer.render(markdown_text)
     root = ET.fromstring(f"<div>{html}</div>")
     headings = add_heading_anchors(root)
     link_table_of_contents(root, headings)
@@ -417,7 +402,7 @@ def process(index_path: Path, markdown_path: Path, check_only: bool) -> bool:
     if updated != text:
         if check_only:
             return True
-        index_path.write_text(updated, encoding="utf-8")
+        index_path.write_text(updated, encoding="utf-8", newline="\n")
         return True
     return False
 

@@ -57,7 +57,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install markdown
+          python3 -m pip install markdown-it-py
       - name: Snapshot working tree before regenerating
         run: |
           git status --porcelain --untracked-files=all > /tmp/tree-before.txt

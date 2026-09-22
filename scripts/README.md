@@ -91,7 +91,8 @@ require updates without modifying them.
 Pre-renders `docs/letter.md` into HTML and replaces the content between the
 render markers in `docs/index.html`. This keeps the site layout identical while
 removing the need for client-side JavaScript rendering. Requires the Python
-`markdown` package.
+`markdown-it-py` package. It renders CommonMark, the dialect GitHub uses, so
+lists nested with 2-3 spaces nest the same way on the site as on GitHub.
 
 It also gives every heading an `id` and turns the letter's Table of Contents
 into working links, so each section has a shareable URL

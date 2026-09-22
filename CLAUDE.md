@@ -305,7 +305,7 @@ Automated commits include tags in their messages to prevent re-triggering loops:
 
 | Tool | Used by | Notes |
 |---|---|---|
-| Python 3 | All scripts | Standard library only, except `render_index_html.py` needs `markdown` package |
+| Python 3 | All scripts | Standard library only, except `render_index_html.py` needs the `markdown-it-py` package |
 | GnuPG (`gpg`) | `verify-clearsign.sh`, `sign-and-export.sh`, CI | Must be installed for signing/verification |
 | OpenTimestamps client (`ots`) | OTS workflows | `pipx install opentimestamps-client` or `pip install opentimestamps-client` |
 | `jq` | `auto-release-latest-letter.yml` | JSON parsing in shell |
