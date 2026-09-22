@@ -189,9 +189,6 @@ Every release is OpenPGP clear-signed and Bitcoin-timestamped. The authoritative
 of any release is its clear-signature, verified against the author key fingerprint:
 
     {fingerprint}
-
-If verification fails or is unavailable, the letter asks that you treat the document
-as untrusted and default to ask/pause.
 """
 
 

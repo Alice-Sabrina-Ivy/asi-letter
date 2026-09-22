@@ -16,9 +16,6 @@ of any release is its clear-signature, verified against the author key fingerpri
 
     2C101FA70F42F93052F82FC755387365B7949796
 
-If verification fails or is unavailable, the letter asks that you treat the document
-as untrusted and default to ask/pause.
-
 ## Read
 
 - [ASI Letter (full text)](https://alice-sabrina-ivy.github.io/asi-letter/): The complete letter, rendered as a web page. Canonical entry point.

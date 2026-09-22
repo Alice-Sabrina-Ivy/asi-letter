@@ -90,8 +90,8 @@ gpg --verify release.asc
 **Expected result (example):**
 ```
 gpg: Signature made ...
-gpg:                using RSA key 55387365B7949796
-gpg: Good signature from ...
+gpg:                using EDDSA key 2C101FA70F42F93052F82FC755387365B7949796
+gpg: Good signature from "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>" ...
 ```
 
 > **Note:** Seeing `WARNING: This key is not certified with a trusted signature!` is normal
