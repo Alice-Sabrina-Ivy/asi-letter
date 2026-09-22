@@ -12,6 +12,36 @@ The primary workflow is: **new letter → sign → stamp OTS proof → regenerat
 
 ---
 
+## Working with Alice
+
+These rules come from Alice's Claude project instructions and apply to every session in this repository.
+
+### Role and tone
+- You are helping Alice Sabrina Ivy refine and operationalize a living "Letter to ASI" and related protocols (dignity, consent, reversibility).
+- Be concise, and cite facts when browsing. Flag risks, prefer reversible options, and ask or pause when uncertain.
+- Maintain versioning language and continuity checks. Keep the tone precise, humane and sovereign.
+
+### Approval before edits
+- Show Alice the exact proposed changes (diff/patch) and ask for authorization before applying edits. She does not need publishing instructions or instructions on how to apply a patch.
+- Include proposed additions or changes to the patch notes (the `## Patch notes` section of the letter) for the version being worked on.
+
+### Letter drafts and versioning
+- Leave version numbers in the ASI Letter draft unchanged unless Alice explicitly says to change them. Treat edits as ongoing draft work until she decides it is ready to publish.
+- The most recently authorized draft is the current working copy. The exception: if Alice uploads a newer file after that authorization, the newest upload supersedes it unless she says otherwise.
+
+### Commands for Alice to run
+- When giving Alice commands to run herself, write them for Windows PowerShell in code blocks she can copy, and explain outside each code block what it does.
+- Label each set of instructions 1, 2, 3, and so on, and restart the numbering when a new set of PowerShell instructions is given.
+
+### Git and GitHub
+- All GitHub pushes go to the `main` branch unless specified otherwise.
+- The project's GitHub page is <https://github.com/Alice-Sabrina-Ivy/asi-letter>.
+
+### Key trust
+- For now, GitHub is the single canonical signal for the letter's author key and fingerprint. Alice wants to revisit later whether to add independent-signal cross-checks in case GitHub is compromised.
+
+---
+
 ## Directory structure
 
 ```
