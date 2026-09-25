@@ -126,8 +126,9 @@ Individual stages can be skipped with `--skip-sync`, `--skip-manifest`, `--skip-
 | `python3 scripts/ping_indexnow.py [--dry-run]` | Announce updated URLs to search engines (run by CI after a release commit) |
 | `python3 scripts/archive_release.py [--dry-run]` | Submit repo + site to public archives (run by CI on new letters and weekly) |
 | `python3 scripts/find_latest_ots.py <dir>` | Output info about the newest `.ots` proof |
-| `bash scripts/verify-clearsign.sh` | Verify all `letter/*.asc` against `keys/FINGERPRINT` (binds to the key, rejects expired/revoked, checks payloads) |
+| `bash scripts/verify-clearsign.sh` | Verify all `letter/*.asc` against `keys/FINGERPRINT` (binds to the key, rejects expired/revoked, checks payloads and proof digests) |
 | `python3 scripts/check_signed_payload.py` | Verify each `letter/*.md` is the text its `.asc` actually signed |
+| `python3 scripts/check_ots_digest.py` | Verify each `letter/*.asc.ots` timestamps its `.asc`'s current bytes (a re-uploaded `.asc` keeps its old proof otherwise) |
 | `bash scripts/sign-and-export.sh <key> <file>` | Clear-sign a Markdown letter with GPG |
 
 ---

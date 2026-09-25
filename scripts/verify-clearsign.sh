@@ -15,7 +15,8 @@
 # It now parses gpg's machine-readable --status-fd output and requires an explicit
 # VALIDSIG naming the trusted primary key, rejects expired/revoked/bad signatures,
 # and warns before the key lapses. It also checks that each .md really is the text
-# that was signed (see scripts/check_signed_payload.py).
+# that was signed (see scripts/check_signed_payload.py), and that each .asc.ots
+# timestamps the .asc's current bytes (see scripts/check_ots_digest.py).
 set -euo pipefail
 IFS=$'\n\t'
 shopt -s nullglob
@@ -145,6 +146,13 @@ fi
 echo
 echo "Checking each letter/*.md is the text that was signed ..."
 if ! python3 scripts/check_signed_payload.py --gpg "$GPG_BIN"; then
+  fail=1
+fi
+
+# --- timestamp binding --------------------------------------------------------
+echo
+echo "Checking each letter/*.asc.ots timestamps its .asc's current bytes ..."
+if ! python3 scripts/check_ots_digest.py; then
   fail=1
 fi
 
