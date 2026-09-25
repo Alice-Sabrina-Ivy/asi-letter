@@ -298,6 +298,14 @@ Do not add it to `docs/sitemap.xml` or `RESOURCES` in `gen_discovery.py`.
 Rotating it means deleting the old file and creating a new self-matching one; the
 script needs no change.
 
+### Hash algorithm
+Alice wants SHA-512 for anything new that names or checks a file by hash (her
+2026-09-25 decision). SHA-256 stays only where OpenTimestamps requires it: each
+`.asc.ots` commits to the `.asc`'s SHA-256, and Sealed Order IDs are defined by the
+SHA-256 their proof records. `RELEASES.json` carries both `sha256` and `sha512`
+per file. SHA-256 is kept for compatibility and because v1.4.1 still accepts it for
+releases published before v1.4.1.
+
 ### Fingerprint format
 `FINGERPRINT` must be 40 uppercase hex characters, **no spaces**. The `sync-readme-fingerprint.yml` workflow auto-syncs the spaced display form in `README.md` from this file.
 

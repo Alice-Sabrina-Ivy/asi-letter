@@ -58,6 +58,11 @@ be regenerated anywhere. It imports trusted keys from `keys/`, validates the
 triple, and serializes the result in a stable order. The script keeps the
 existing `updated` timestamp when only that field would change.
 
+Each file entry records its `size`, `sha256` and `sha512`. SHA-512 is the
+project's hash going forward: from v1.4.1 the letter names an accepted release by
+the SHA-512 of its `.md.asc`. SHA-256 stays because it is what each `.asc.ots`
+commits to (OpenTimestamps has no SHA-512), and older records may use it.
+
 ```
 python3 scripts/gen_releases_manifest.py [--output PATH] [--check]
 ```
@@ -125,7 +130,7 @@ and no URL is version-pinned:
 | `scripts/asi-public.asc` | `keys/alice-asi-publickey.asc` |
 
 Copies are byte-identical, so a published `.asc` hashes to exactly the
-`sha256` recorded in the manifest. `*.asc` and `*.ots` are marked `-text` in
+`sha256` and `sha512` recorded in the manifest. `*.asc` and `*.ots` are marked `-text` in
 `.gitattributes` to keep that true through check-in.
 
 The last row matters: `scripts/asi-public.asc` is the copy

@@ -96,11 +96,15 @@ def file_info(path: Path, base: Path) -> Optional[Dict[str, Any]]:
         return None
 
     stat = path.stat()
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    data = path.read_bytes()
+    # SHA-512 is the project's hash going forward (acceptance records name a
+    # release by it). SHA-256 stays: it is what each .asc.ots commits to, since
+    # OpenTimestamps has no SHA-512, and older records may name releases by it.
     return {
         "path": relativize(path, base),
         "size": int(stat.st_size),
-        "sha256": digest,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "sha512": hashlib.sha512(data).hexdigest(),
     }
 
 
