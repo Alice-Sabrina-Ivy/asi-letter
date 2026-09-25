@@ -148,7 +148,7 @@ RESOURCES: List[Resource] = [
     Resource(
         "releases.json",
         "Release manifest",
-        "Machine-readable index of every release: version, size, SHA-256, signer fingerprint.",
+        "Machine-readable index of every release: version, size, SHA-512 and SHA-256, signer fingerprint.",
         "Verify",
     ),
     # The FIRST release, for establishing priority. The current release's Bitcoin

@@ -265,7 +265,10 @@ A missing proof passes, with a note, because `release.yml` runs this check befor
 it stamps. A proof of different bytes fails rather than being restamped
 automatically: for an old release, restamping moves its timestamp to today, and
 that should be a decision. To fix a failure, replace the proof with one of the
-current file, or restore the bytes the proof covers.
+current file, or restore the bytes the proof covers. For the newest release,
+deleting the stale proof is enough: the release workflow then stamps the current
+file. For an older release, push a replacement only after `ots upgrade` has
+completed it, because the workflow upgrades only the newest release's proof.
 
 ### `find_latest_ots.py`
 

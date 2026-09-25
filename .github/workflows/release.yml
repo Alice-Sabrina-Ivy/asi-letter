@@ -120,9 +120,11 @@ jobs:
 
       - name: Verify signatures, key status and signed payloads
         # Nothing is stamped, committed, deployed or archived unless every letter
-        # verifies: signed by the trusted, unexpired, unrevoked key, and each .md
-        # is exactly the text its .asc signed. Once the key expires, publishing
-        # stops until the renewed public key is pushed to keys/ (Alice's choice).
+        # verifies: signed by the trusted, unexpired, unrevoked key, each .md is
+        # exactly the text its .asc signed, and each existing .asc.ots covers the
+        # .asc's current bytes (a missing proof passes: the next step stamps it).
+        # Once the key expires, publishing stops until the renewed public key is
+        # pushed to keys/ (Alice's choice).
         if: steps.pre.outputs.run == 'true'
         run: |
           set -euo pipefail

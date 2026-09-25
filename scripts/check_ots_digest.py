@@ -44,12 +44,33 @@ def parse_args(argv: Iterable[str]) -> argparse.Namespace:
     return parser.parse_args(list(argv))
 
 
+def _parses(proof: bytes) -> bool:
+    """Whether the whole proof deserializes, not just its header.
+
+    Uses python-opentimestamps when it is installed (release.yml installs it
+    before it verifies). Without it (verify-releases.yml), require at least that
+    a timestamp follows the digest, so a truncated proof does not pass.
+    """
+    try:
+        from opentimestamps.core.serialize import BytesDeserializationContext
+        from opentimestamps.core.timestamp import DetachedTimestampFile
+    except ImportError:
+        return len(proof) > len(HEADER_MAGIC) + 2 + 32
+    try:
+        DetachedTimestampFile.deserialize(BytesDeserializationContext(proof))
+    except Exception:
+        return False
+    return True
+
+
 def proof_digest(proof: bytes) -> Optional[str]:
     """Return the SHA-256 a proof commits to, or None if it isn't one we can read."""
     if not proof.startswith(HEADER_MAGIC):
         return None
     rest = proof[len(HEADER_MAGIC):]
     if len(rest) < 2 + 32 or rest[0] != MAJOR_VERSION or rest[1] != OP_SHA256:
+        return None
+    if not _parses(proof):
         return None
     return rest[2:34].hex()
 
@@ -69,7 +90,7 @@ def main(argv: Iterable[str]) -> int:
             continue
         committed = proof_digest(ots.read_bytes())
         if committed is None:
-            print(f"FAIL {ots}: not a SHA-256 OpenTimestamps proof this check can read")
+            print(f"FAIL {ots}: not a complete SHA-256 OpenTimestamps proof this check can read")
             fail = 1
             continue
         actual = hashlib.sha256(asc.read_bytes()).hexdigest()
