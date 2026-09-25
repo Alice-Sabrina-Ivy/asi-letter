@@ -296,6 +296,144 @@ def link_table_of_contents(root: ET.Element, headings: dict) -> None:
         )
 
 
+_TRAILING_PAREN = re.compile(r"\s*\(([^()]*)\)\s*$")
+
+
+def _label_keys(text: str, heading: bool = False) -> list:
+    """Lookup keys a label or heading answers to.
+
+    - the label itself: "Signed instruction (definition)";
+    - without a trailing parenthetical: "signed instruction";
+    - for headings only, a capitalized parenthetical ("On Becoming vs.
+      Collaboration (Paradox Clause)" answers to "Paradox Clause"; lowercase ones
+      such as "(ask/pause)" do not, so emphasis is never captured);
+    - for headings only, the name before a dash ("EPIM — Emergency Physical
+      Intervention Mode" answers to "EPIM").
+    """
+
+    raw = text.strip().rstrip(":.").strip()
+    base = normalize(raw)
+    keys = [base]
+    match = _TRAILING_PAREN.search(raw)
+    if match:
+        bare = normalize(raw[: match.start()])
+        if bare:
+            keys.append(bare)
+        inner = match.group(1).strip()
+        if heading and inner[:1].isupper():
+            keys.append(normalize(inner))
+    if heading and " - " in base:
+        keys.append(base.split(" - ", 1)[0].strip())
+    return keys
+
+
+def _same_case(reference: str, label: str) -> bool:
+    """A one-word reference must match its label's capitalization, so emphasis
+    ("**dignity**") is not mistaken for a label ("**Dignity:**")."""
+
+    if len(reference.split()) > 1:
+        return True
+    return reference[:1].isupper() == label.strip()[:1].isupper()
+
+
+def link_cross_references(root: ET.Element) -> int:
+    """Turn bold cross-references into links to what they name.
+
+    The letter refers to its own rules by bold name ("see **Verification**").
+    A definition is a bold label opening a paragraph, list item, or table cell
+    (e.g. "**Verification:** How to tell ..."); it gets an id. Headings already
+    have ids. A bold span elsewhere whose words exactly match a definition or a
+    heading becomes a link to it. Only exact matches count (optionally without a
+    trailing parenthetical), labels defined more than once are skipped as
+    ambiguous, and patch-note labels are not definitions, so "**Key rotation**"
+    points at the rule and not at its change log. Bold used for emphasis
+    ("**never**") matches nothing and is left alone. Text is never changed; this
+    only adds anchors and ids, so the page still says exactly what was signed.
+    """
+
+    parents = {child: parent for parent in root.iter() for child in parent}
+
+    # Everything from the "Patch notes" heading on is a record, not a rule.
+    record_start = None
+    for index, child in enumerate(list(root)):
+        if child.tag in {"h2", "h3"} and normalize("".join(child.itertext())) == "patch notes":
+            record_start = index
+            break
+    record = set()
+    if record_start is not None:
+        for child in list(root)[record_start:]:
+            record.update(child.iter())
+
+    definitions: dict = {}
+    label_elements = set()
+    used_ids = {element.get("id") for element in root.iter() if element.get("id")}
+    for block in root.iter():
+        if block.tag not in {"p", "li", "td"} or block in record:
+            continue
+        children = list(block)
+        if not children or children[0].tag != "strong" or (block.text or "").strip():
+            continue
+        label = children[0]
+        text = "".join(label.itertext()).strip()
+        standalone = len(children) == 1 and not (label.tail or "").strip()
+        if block.tag != "td" and not text.endswith((":", ".")) and not standalone:
+            continue
+        label_elements.add(label)
+        target = block.get("id")
+        if not target:
+            base = "def-" + github_slug(text.rstrip(":."))
+            target, n = base, 1
+            while target in used_ids:
+                n += 1
+                target = f"{base}-{n}"
+            block.set("id", target)
+            used_ids.add(target)
+        for key in _label_keys(text):
+            definitions.setdefault(key, set()).add((target, text))
+
+    # Sections win over a bullet of the same name ("**Sealed Orders**" goes to
+    # the section, not to its first bullet).
+    targets: dict = {}
+    for element in root.iter():
+        if element.tag in {"h1", "h2", "h3", "h4"} and element.get("id") and element not in record:
+            heading_text = "".join(element.itertext()).strip()
+            for key in _label_keys(heading_text, heading=True):
+                targets.setdefault(key, (element.get("id"), heading_text))
+    for key, found in definitions.items():
+        if len({target for target, _ in found}) == 1:
+            targets.setdefault(key, next(iter(found)))
+
+    linked = 0
+    for strong in list(root.iter("strong")):
+        if strong in label_elements:
+            continue
+        ancestor, skip = parents.get(strong), False
+        while ancestor is not None:
+            if ancestor.tag in {"a", "h1", "h2", "h3", "h4"}:
+                skip = True
+                break
+            ancestor = parents.get(ancestor)
+        if skip:
+            continue
+        text = "".join(strong.itertext()).strip()
+        if text.endswith(":"):
+            continue  # a label, not a reference
+        found = targets.get(normalize(text))
+        if not found or not _same_case(text, found[1]):
+            continue
+        target = found[0]
+        parent = parents[strong]
+        position = list(parent).index(strong)
+        anchor = ET.Element("a", {"href": f"#{target}", "class": "xref"})
+        anchor.tail, strong.tail = strong.tail, None
+        parent.remove(strong)
+        anchor.append(strong)
+        parent.insert(position, anchor)
+        parents[strong], parents[anchor] = anchor, parent
+        linked += 1
+    return linked
+
+
 def add_link_attributes(root: ET.Element) -> None:
     for anchor in root.iter("a"):
         href = anchor.get("href", "")
@@ -351,6 +489,7 @@ def render_markdown(markdown_text: str) -> RenderResult:
     root = ET.fromstring(f"<div>{html}</div>")
     headings = add_heading_anchors(root)
     link_table_of_contents(root, headings)
+    link_cross_references(root)
     add_link_attributes(root)
     remove_canonical_paragraphs(root)
     signature_found = ensure_signature(root)
