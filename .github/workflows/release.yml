@@ -1,0 +1,306 @@
+name: release
+
+# One pass per change, from push to the live site:
+#
+#   build           timestamp new releases, upgrade the newest proof, regenerate
+#                   every artifact, make ONE commit, package docs/ for Pages
+#   deploy          publish the site (GitHub Pages, source "GitHub Actions")
+#   then, after the deploy:
+#   github-release  refresh the GitHub Release when the manifest, a proof or the key changed
+#   announce        IndexNow
+#   archive         Software Heritage + Wayback, when the letter or its proof changed
+#
+# The hourly proof check and the weekly archive live in scheduled.yml, which calls
+# this workflow. See that file for why the schedule is kept out of this one.
+#
+# This replaces four workflows that chained through workflow_run hops
+# (ots-stamp-letter-asc -> releases-manifest -> ots-upgrade, plus the manual
+# ots-verify-upgrade). Each made its own commit, so one release produced three
+# commits and three Pages deploys, and the jobs spent minutes waiting on one
+# another's deploys. See CLAUDE.md, "Release workflow".
+on:
+  push:
+    branches: [main]
+    paths:
+      - "letter/**"
+      - "keys/**"
+      - "scripts/**"
+      - "docs/**"
+      - ".github/scripts/**"
+      - ".github/workflows/release.yml"
+  workflow_call:
+    inputs:
+      deploy:
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy the site even if nothing changed"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  build:
+    # Only main (a dispatch from another branch would still push to main, and its
+    # deploy would be refused). Bot commits are pushed with GITHUB_TOKEN, which
+    # starts no workflows; the guard keeps that true if a different token is ever
+    # used, and skips only commits the bot itself made, so a human revert of one
+    # still builds.
+    if: >-
+      ${{ github.ref == 'refs/heads/main' &&
+          (github.event_name != 'push' ||
+           !(contains(github.event.head_commit.message, '[release-auto]') &&
+             github.event.head_commit.committer.email == '41898282+github-actions[bot]@users.noreply.github.com')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # The only job that changes main. Runs queue here one at a time; queue: max
+    # keeps every pending run instead of letting a newer one replace it (a
+    # replaced push run could otherwise lose its deploy).
+    concurrency:
+      group: letter-artifacts-main
+      cancel-in-progress: false
+      queue: max
+    permissions:
+      contents: write
+      actions: write # re-enable scheduled.yml
+    outputs:
+      committed: ${{ steps.commit.outputs.committed }}
+      release: ${{ steps.commit.outputs.release }}
+      archive: ${{ steps.commit.outputs.archive }}
+      deploy: ${{ steps.decide.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Keep the schedule enabled
+        # GitHub disables a scheduled workflow after 60 days without repository
+        # activity. A push is activity; re-enabling here undoes any lapse.
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable scheduled.yml --repo "$GITHUB_REPOSITORY" || echo "::warning::could not re-enable scheduled.yml"
+
+      - name: Anything to do?
+        id: pre
+        # Scheduled runs exist only to upgrade a pending proof. When every release
+        # has a proof and the newest already carries a Bitcoin attestation, stop
+        # here instead of running the pipeline.
+        run: |
+          python3 - <<'PY'
+          import glob, os
+          tag = bytes.fromhex("0588960d73d71901")  # OpenTimestamps Bitcoin attestation
+          ascs = sorted(glob.glob("letter/ASI-Letter-v*.md.asc"))
+          missing = [a for a in ascs if not os.path.exists(a + ".ots")]
+          newest = ascs[-1] if ascs else ""
+          final = bool(newest) and os.path.exists(newest + ".ots") and tag in open(newest + ".ots", "rb").read()
+          skip = os.environ["GITHUB_EVENT_NAME"] == "schedule" and not missing and final
+          print(f"newest={newest or '-'} missing_proofs={len(missing)} finalized={final} -> {'nothing to do' if skip else 'run'}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"run={'false' if skip else 'true'}\n")
+          PY
+
+      - uses: actions/setup-python@v6
+        if: steps.pre.outputs.run == 'true'
+        with:
+          python-version: "3.x"
+
+      - name: Install tools
+        if: steps.pre.outputs.run == 'true'
+        # gnupg is preinstalled on the runner image.
+        run: python -m pip install --disable-pip-version-check markdown-it-py opentimestamps-client
+
+      - name: Verify signatures, key status and signed payloads
+        # Nothing is stamped, committed, deployed or archived unless every letter
+        # verifies: signed by the trusted, unexpired, unrevoked key, and each .md
+        # is exactly the text its .asc signed. Once the key expires, publishing
+        # stops until the renewed public key is pushed to keys/ (Alice's choice).
+        if: steps.pre.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          # Import the committed key: scripts/asi-public.asc is regenerated later
+          # in this job, so on a key renewal it is still the old export.
+          gpg --batch --import keys/alice-asi-publickey.asc
+          bash scripts/verify-clearsign.sh
+
+      - name: Snapshot working tree
+        if: steps.pre.outputs.run == 'true'
+        run: git status --porcelain --untracked-files=all > "$RUNNER_TEMP/tree-before.txt"
+
+      - name: Timestamp new releases; upgrade the newest proof
+        if: steps.pre.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for asc in letter/*.asc; do
+            if [[ ! -f "$asc.ots" ]]; then
+              echo "Stamping $asc"
+              # A calendar outage must not block publishing: the release goes out
+              # with its proof pending ("ots": null) and the next run retries.
+              if ! ots stamp "$asc"; then
+                rm -f -- "$asc.ots"
+                echo "::warning::ots stamp failed for $asc; publishing with the proof pending. The next run retries."
+              fi
+            fi
+          done
+          # Only the newest release's proof is upgraded; older ones are final.
+          ascs=(letter/ASI-Letter-v*.md.asc)
+          if (( ${#ascs[@]} )); then
+            newest="$(printf '%s\n' "${ascs[@]}" | sort | tail -n1)"
+            if [[ -f "$newest.ots" ]]; then
+              # A pending proof makes `ots upgrade` exit non-zero with "Timestamp
+              # not complete"; anything else (including a stalled calendar, cut off
+              # by timeout) is a real failure and must be visible.
+              if out="$(timeout 180 ots upgrade "$newest.ots" 2>&1)"; then
+                echo "$out"
+              elif grep -q "not complete" <<< "$out"; then
+                echo "Proof for $newest is still pending Bitcoin confirmation."
+              else
+                echo "$out"
+                echo "::warning::ots upgrade failed for $newest (see the log above)"
+              fi
+              # `ots upgrade` keeps the previous proof as <proof>.bak whenever it
+              # changes the proof. It is not an artifact and would trip the guard.
+              rm -f -- "$newest.ots.bak"
+            fi
+          fi
+
+      - name: Regenerate release artifacts
+        if: steps.pre.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python scripts/release.py
+          python scripts/release.py --check
+          # Every path the pipeline touched must be in generated_paths.sh (plus
+          # the proofs this job stamps or upgrades), or the commit below would
+          # silently leave it out.
+          bash .github/scripts/assert_generated_paths.sh --baseline "$RUNNER_TEMP/tree-before.txt" 'letter/*.ots'
+
+      - name: Commit (one commit for everything)
+        id: commit
+        if: steps.pre.outputs.run == 'true'
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          # The GitHub Release carries the manifest, the proof and the public key;
+          # refresh it when one of those changed. Archive when the letter changed.
+          flags() {
+            if grep -qE '^(letter/(RELEASES\.json|.*\.ots)|keys/(alice-asi-publickey\.asc|FINGERPRINT)|docs/(alice-asi-publickey\.asc|FINGERPRINT\.txt))$' <<< "$1"; then
+              echo "release=true" >> "$GITHUB_OUTPUT"
+            fi
+            if grep -qE '^letter/' <<< "$1"; then
+              echo "archive=true" >> "$GITHUB_OUTPUT"
+            fi
+          }
+          # A human push may already carry the regenerated files, leaving nothing
+          # for this job to commit; judge by what the push itself changed too.
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            flags "$(git diff --name-only "$BEFORE" "$GITHUB_SHA" 2>/dev/null || true)"
+          fi
+
+          read -r -a paths <<< "$(.github/scripts/generated_paths.sh)"
+          if [[ -z "$(git status --porcelain --untracked-files=all -- "${paths[@]}" 'letter/*.ots')" ]]; then
+            echo "Nothing changed; no commit."
+            echo "committed=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # --stageable: a generated path that was deliberately removed (a pruned
+          # docs/letter.md.asc.ots awaiting its proof) would make git add abort.
+          read -r -a add_paths <<< "$(.github/scripts/generated_paths.sh --stageable)"
+          git add -A -- "${add_paths[@]}" 'letter/*.ots'
+          staged="$(git diff --cached --name-only)"
+          printf 'Committing:\n%s\n' "$staged"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(release): timestamp and regenerate release artifacts [release-auto]"
+          # Rebase onto anything pushed meanwhile; a real conflict fails loudly
+          # (and the newer push has its own run queued).
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
+          echo "committed=1" >> "$GITHUB_OUTPUT"
+          flags "$staged"
+
+      - name: Decide whether to deploy
+        id: decide
+        # A bot commit changed docs/; a human push may have changed docs/ itself;
+        # or deployment was requested by hand.
+        run: |
+          deploy=false
+          if [[ "${{ steps.commit.outputs.committed }}" == "1" || "$GITHUB_EVENT_NAME" == "push" || "${{ inputs.deploy }}" == "true" ]]; then
+            deploy=true
+          fi
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+
+      - name: Package the site
+        if: steps.decide.outputs.deploy == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/site"
+          cp -a docs/. "$RUNNER_TEMP/site/"
+          # Contributor notes for AI agents, not site content.
+          rm -f "$RUNNER_TEMP/site/AGENTS.md"
+
+      - uses: actions/upload-pages-artifact@v5
+        if: steps.decide.outputs.deploy == 'true'
+        with:
+          path: ${{ runner.temp }}/site
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.deploy == 'true'
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+      queue: max
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
+
+  github-release:
+    # After the deploy, so the Release never gets ahead of the site.
+    needs: [build, deploy]
+    if: needs.build.outputs.release == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/auto-release-latest-letter.yml
+
+  announce:
+    # After the deploy, so search engines fetch the new pages, not the old ones.
+    needs: [build, deploy]
+    if: needs.build.outputs.committed == '1' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+      - name: Announce updated URLs to search engines (IndexNow)
+        # Non-fatal: a search engine being unreachable is not a release failure.
+        continue-on-error: true
+        run: python scripts/ping_indexnow.py
+
+  archive:
+    # After the deploy, so the Wayback Machine captures the new site.
+    needs: [build, deploy]
+    if: needs.build.outputs.archive == 'true'
+    uses: ./.github/workflows/archive-release.yml
+    secrets: inherit

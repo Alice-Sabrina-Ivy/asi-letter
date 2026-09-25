@@ -6,21 +6,24 @@ on:
   workflow_dispatch: {}
 
 concurrency:
+  # Same group as release.yml's build job on main. queue: max keeps both runs
+  # instead of letting one replace the other while it waits.
   group: letter-artifacts-${{ github.ref_name }}
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: write
 
 jobs:
   sync:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
         with:
           # Full history and an explicit branch: the default detached checkout at
           # the event SHA left nothing to rebase onto, so this job raced
-          # releases-manifest (which also fires on keys/**) and its push could
+          # release.yml (which also fires on keys/**) and its push could
           # land on a moved branch.
           fetch-depth: 0
           ref: ${{ github.ref_name }}

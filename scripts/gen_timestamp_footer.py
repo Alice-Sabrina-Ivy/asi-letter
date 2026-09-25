@@ -23,8 +23,8 @@ EARLIEST ATTESTATION, NOT LATEST
 A proof can carry attestations from several calendar servers; the first release
 has four (915041, 915042, 915046, 915128). The claim is "existed prior to this
 block", so the EARLIEST attestation is the tightest true statement. The older
-helper (.github/scripts/extract_block_height.py) reports the highest, which is
-still true but weaker.
+helper (.github/scripts/extract_block_height.py, since removed) reported the
+highest, which is still true but weaker.
 """
 
 from __future__ import annotations

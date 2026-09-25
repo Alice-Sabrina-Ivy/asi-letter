@@ -1,0 +1,37 @@
+name: scheduled
+
+# The repository's only schedule, kept apart from release.yml on purpose.
+#
+# In a public repository GitHub disables a scheduled workflow after 60 days
+# without repository activity, and a disabled workflow runs on no trigger at all,
+# push included. If the cron lived in release.yml, a quiet spell would silently
+# stop the next letter from being published. Here, a lapse can only pause the
+# proof check and the weekly archive; release.yml re-enables this workflow on
+# every push.
+on:
+  schedule:
+    # Proof check: picks up a pending OpenTimestamps proof once Bitcoin confirms
+    # it. GitHub runs schedules best-effort (often hours apart); a run with nothing
+    # to do exits in seconds.
+    - cron: "23 * * * *"
+    # Weekly archive safety net, offset off the hour.
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: github.event.schedule == '23 * * * *'
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+      actions: write
+    uses: ./.github/workflows/release.yml
+    secrets: inherit
+
+  archive:
+    if: github.event.schedule == '17 4 * * 1'
+    uses: ./.github/workflows/archive-release.yml
+    secrets: inherit

@@ -3,38 +3,34 @@ name: archive-release
 # Keeps the public archives current without anyone remembering to do it.
 #
 # Triggers, in order of importance:
-#   push to letter/**  a new signed release is the thing most worth archiving,
-#                      and that push comes from a human token, so it fires
-#                      (pushes made with GITHUB_TOKEN do not start workflows).
-#   schedule           a weekly safety net, so the archives stay fresh even if a
-#                      release lands some other way or a submission was dropped.
+#   workflow_call      release.yml calls this after deploying a new release or an
+#                      upgraded proof, so the Wayback Machine captures the new site.
+#                      (It used to run on the upload push itself, before the site
+#                      was regenerated, and archived the previous release.)
+#   weekly             scheduled.yml calls it as a safety net, so the archives
+#                      stay fresh even if a submission was dropped.
 #   workflow_dispatch  run it on demand.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "letter/**"
-  schedule:
-    # Weekly, offset off the hour to avoid the busiest cron minute.
-    - cron: "17 4 * * 1"
+  workflow_call: {}
   workflow_dispatch: {}
-
-# Deliberately NOT in the letter-artifacts concurrency group: this job only reads
-# the repo and talks to external archives, so it cannot race the jobs that mutate
-# release artifacts, and it should not consume that group's single queue slot.
-concurrency:
-  group: archive-release-${{ github.ref_name }}
-  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
   archive:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    # Deliberately NOT in the letter-artifacts group: this job only reads the repo
+    # and talks to external archives, so it cannot race the job that changes main.
+    # Job-level so it also applies when release.yml calls this workflow.
+    concurrency:
+      group: archive-release-main
+      cancel-in-progress: false
+      queue: max
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: main
 
       - uses: actions/setup-python@v6
         with:
@@ -42,6 +38,7 @@ jobs:
 
       - name: Submit to public archives
         env:
+          PYTHONUNBUFFERED: "1"
           # Optional. Without these, the Wayback step reports that it was skipped
           # and why; Software Heritage needs no credentials and always runs.
           IA_ACCESS_KEY: ${{ secrets.IA_ACCESS_KEY }}

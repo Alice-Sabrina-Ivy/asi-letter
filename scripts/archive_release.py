@@ -50,10 +50,20 @@ WAYBACK_DELAY_SECONDS = 8.0
 RETRIES = 3
 
 
+def warn(message: str) -> None:
+    """Report a non-fatal failure. Under GitHub Actions it also becomes a
+    ::warning:: annotation, so a failed archive shows on the run page instead of
+    hiding in stderr under a green check."""
+
+    print(f"  {message}", file=sys.stderr)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(f"::warning::archive: {message}")
+
+
 def parse_args(argv: Iterable[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--docs-dir", type=Path, default=Path("docs"))
-    parser.add_argument("--timeout", type=float, default=90.0)
+    parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument(
         "--wayback-delay",
         type=float,
@@ -104,9 +114,9 @@ def archive_software_heritage(timeout: float, dry_run: bool) -> None:
             print(f"  rate limit remaining this hour: {remaining}")
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", "replace").strip()[:200]
-        print(f"  not archived: HTTP {exc.code} {body}", file=sys.stderr)
+        warn(f"Software Heritage not archived: HTTP {exc.code} {body}")
     except Exception as exc:  # network, timeout, malformed JSON
-        print(f"  not archived: {exc}", file=sys.stderr)
+        warn(f"Software Heritage not archived: {exc}")
 
 
 def archive_wayback(urls: List[str], timeout: float, dry_run: bool, delay: float = WAYBACK_DELAY_SECONDS) -> None:
@@ -162,15 +172,22 @@ def archive_wayback(urls: List[str], timeout: float, dry_run: bool, delay: float
                 if exc.code in (401, 403):
                     # Wrong or revoked keys: worth saying plainly rather than
                     # burying it among transient failures.
-                    print(
-                        f"  rejected {url}: HTTP {exc.code} -- check IA_ACCESS_KEY / IA_SECRET_KEY",
-                        file=sys.stderr,
-                    )
+                    warn(f"rejected {url}: HTTP {exc.code} -- check IA_ACCESS_KEY / IA_SECRET_KEY")
                     return
-                print(f"  failed {url}: HTTP {exc.code}", file=sys.stderr)
+                warn(f"failed {url}: HTTP {exc.code}")
+                break
+            except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+                # Save Page Now usually refuses or drops the connection when it is
+                # busy rather than answering 429, so treat that the same way.
+                if attempt < RETRIES:
+                    backoff = delay * (2 ** attempt)
+                    print(f"  network error on {url} ({exc}); retrying in {backoff:.0f}s")
+                    time.sleep(backoff)
+                    continue
+                warn(f"failed {url}: {exc}")
                 break
             except Exception as exc:
-                print(f"  failed {url}: {exc}", file=sys.stderr)
+                warn(f"failed {url}: {exc}")
                 break
 
 

@@ -17,7 +17,7 @@
 # check reflects only what the pipeline itself produced.
 #
 # Extra patterns cover paths a workflow legitimately dirties outside the
-# pipeline -- ots-upgrade.yml, for instance, has already staged an upgraded
+# pipeline -- release.yml, for instance, has already stamped or upgraded a
 # letter/*.ots proof by the time this runs.
 set -euo pipefail
 
@@ -28,6 +28,12 @@ baseline_file=""
 if [[ "${1:-}" == "--baseline" ]]; then
   baseline_file="${2:?--baseline requires a file path}"
   shift 2
+  # A missing baseline used to be skipped silently, so a workflow that lost its
+  # snapshot step kept "passing" this guard while the pipeline no longer ran.
+  if [[ ! -f "$baseline_file" ]]; then
+    echo "ERROR: baseline snapshot '$baseline_file' does not exist; the snapshot step must run before release.py." >&2
+    exit 1
+  fi
 fi
 
 known_raw="$("${repo_root}/.github/scripts/generated_paths.sh")"

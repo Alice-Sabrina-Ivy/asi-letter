@@ -214,7 +214,7 @@ def build_manifest(base: Path) -> Dict[str, Any]:
     releases = collect_releases(letter_dir, base, current_fp)
 
     pubkey_path = keys_dir / "alice-asi-publickey.asc"
-    updated = dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    updated = dt.datetime.now(dt.timezone.utc).replace(microsecond=0, tzinfo=None).isoformat() + "Z"
 
     return {
         "schema": "asi-letter/releases#2",

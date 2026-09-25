@@ -57,7 +57,8 @@ if [[ -n "${expiry:-}" ]]; then
   fi
   days=$(( (expiry - now) / 86400 ))
   if (( days <= EXPIRY_WARN_DAYS )); then
-    echo "WARNING: signing key expires in ${days} day(s). Extend it before the next release." >&2
+    # ::warning:: surfaces it as an annotation on the run page in GitHub Actions.
+    echo "${GITHUB_ACTIONS:+::warning::}WARNING: signing key expires in ${days} day(s). Extend it before the next release." >&2
   else
     echo "Key expiry: ${days} day(s) away."
   fi

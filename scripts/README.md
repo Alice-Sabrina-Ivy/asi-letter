@@ -179,8 +179,8 @@ Two details worth keeping:
 * **It reports the EARLIEST attestation, not the highest.** A proof may carry
   attestations from several calendars (the first release has four). The claim is
   "existed prior to this block", so the earliest is the tightest true statement.
-  `.github/scripts/extract_block_height.py` reports the highest — still true, but
-  weaker.
+  The old `.github/scripts/extract_block_height.py` (since removed) reported the
+  highest — still true, but weaker.
 
 ## Signing and verification helpers
 
@@ -244,8 +244,9 @@ Two details matter if you change this:
 ### `find_latest_ots.py`
 
 Locates the newest `.ots` proof in a directory and prints several helpful
-outputs (`latest`, `basename`, `noext`, and `version`). The automation workflows
-use these values to verify and upgrade proofs idempotently.
+outputs (`latest`, `basename`, `noext`, and `version`). No workflow uses it any
+more (`release.yml` stamps and upgrades proofs itself); it remains a handy local
+tool for inspecting proofs.
 
 ## Make integration
 
@@ -260,27 +261,34 @@ This is equivalent to invoking `python3 scripts/release.py` directly.
 
 ## Validation and automation workflows
 
-Multiple GitHub Actions workflows keep the repository healthy and the published
-assets reproducible:
+GitHub Actions keeps the repository healthy and the published site current:
 
-* **`verify-releases.yml`** (push/PR): installs GnuPG and runs
+* **`release.yml`** (push to `letter/**`, `keys/**`, `scripts/**`, `docs/**` or
+  `.github/scripts/**` on `main`; hourly via `scheduled.yml`; manual): one pass from change
+  to live site. The `build` job timestamps any new `.asc`, upgrades the newest
+  proof, runs `release.py`, checks it with `--check` and
+  `assert_generated_paths.sh`, and makes **one** commit tagged `[release-auto]`.
+  The `deploy` job publishes `docs/` to GitHub Pages (source: GitHub Actions).
+  After that, `github-release` refreshes the GitHub Release (when the manifest,
+  a proof or the key changed), `announce` pings IndexNow, and `archive` submits
+  to Software Heritage and the Wayback Machine. The hourly run exits in seconds
+  once the newest proof carries its Bitcoin attestation.
+* **`verify-releases.yml`** (push/PR, any branch): runs
   `scripts/verify-clearsign.sh` to ensure every committed clear-signed letter
   validates against the trusted fingerprint.
-* **`releases-manifest.yml`** (push to `letter/**`, `keys/**`, or manual):
-  executes the full release pipeline (manifest generation, metadata refresh, and
-  docs sync) and auto-commits the results. It rebases onto the tip of the target
-  branch and waits for GitHub Pages deployments to finish before pushing.
-* **`ots-stamp-letter-asc.yml`** (push to `letter/*.asc`): installs the
-  OpenTimestamps client, stamps any new signatures to produce matching `.ots`
-  proofs, waits for GitHub Pages to be idle, and commits the generated proofs.
-* **`ots-verify-upgrade.yml`** (manual): finds the freshest proof via
-  `find_latest_ots.py`, shows `ots info/verify` output, attempts an upgrade, and
-  commits the updated proof when changes are detected.
+* **`auto-release-latest-letter.yml`** (called by `release.yml`; push to
+  `README.md`/licenses; manual): publishes the GitHub Release.
+* **`archive-release.yml`** (called by `release.yml`; weekly via `scheduled.yml`;
+  manual): public archive submissions.
+* **`scheduled.yml`** (the repo's only schedule): hourly proof check and weekly
+  archive. Kept apart from `release.yml` because GitHub disables a scheduled
+  workflow after 60 idle days; `release.yml` re-enables it on every push.
 * **`sync-readme-fingerprint.yml`** (push to `keys/FINGERPRINT` or manual):
   normalizes the fingerprint string and patches `README.md` so the published
   trust anchor always mirrors the canonical value.
 
-These workflows share a concurrency group (`letter-artifacts-${{ github.ref }}`)
-so that only one automation run mutates release artifacts for a given branch at
-a time. Several jobs call `.github/scripts/wait_for_pages_idle.sh` to avoid
-interrupting GitHub Pages deployments when they push their commits.
+Only `release.yml`'s `build` job (and `sync-readme-fingerprint.yml`) change
+`main`; they share the concurrency group `letter-artifacts-main`, so one run
+mutates the tree at a time. Bot commits are pushed with `GITHUB_TOKEN` and start
+no further workflows, so the release workflow deploys the site and calls the
+Release and archive workflows itself.

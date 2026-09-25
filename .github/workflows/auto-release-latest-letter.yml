@@ -1,51 +1,43 @@
 name: auto-release-latest-letter
 
 on:
+  # Called by release.yml after it commits a changed manifest or proof. Bot
+  # commits are pushed with GITHUB_TOKEN, which starts no push workflows, so the
+  # release workflow calls this one directly.
+  workflow_call: {}
   push:
     branches:
       - main
     paths:
-      # NOTE: this path is kept only for a HUMAN edit to the manifest. It cannot
-      # fire for the automated flow: RELEASES.json is written exclusively by
-      # releases-manifest.yml and pushed with GITHUB_TOKEN, and GitHub does not
-      # start workflow runs from GITHUB_TOKEN pushes. The comment that used to sit
-      # here described this as the safety net for a late manifest landing after an
-      # ots-upgrade dispatch — that safety net did not exist. releases-manifest.yml
-      # now dispatches this workflow explicitly when it commits, which does work.
-      - "letter/RELEASES.json"
-      # Other non-letter assets that aren't part of the automated workflow chain.
-      # Letter artifacts otherwise flow through: ots-stamp → releases-manifest →
-      # ots-upgrade, which dispatches this workflow explicitly.
-      - "keys/**"
+      # Release assets the release workflow does not regenerate. Changes under
+      # letter/ and keys/ go through release.yml, which calls this workflow once
+      # the regenerated manifest, proof, key or fingerprint is committed.
       - "README.md"
       - "LICENSE"
       - "LICENSE-DOCS"
-  # ots-upgrade explicitly dispatches this workflow (via `gh workflow run`) only
-  # when it actually commits changes, so we no longer need a blanket
-  # workflow_run trigger that fired on every ots-upgrade completion — including
-  # the frequent scheduled checks that found nothing to do.
   workflow_dispatch: {}
 
 permissions:
   contents: write
 
-# Publishing mutates GitHub Releases (delete assets, edit, then prune old tags),
-# which is not safe to run twice at once. Now that both a push and an explicit
-# dispatch can land close together, serialize runs. Deliberately a separate group
-# from letter-artifacts-*: that one guards the git working tree, this one guards
-# the Releases API.
-concurrency:
-  group: auto-release-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   release:
-    # Runs on push (RELEASES.json / non-letter paths), or workflow_dispatch
-    # (manual, or from ots-upgrade when it commits).
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    # Publishing mutates GitHub Releases (delete assets, edit, then prune old
+    # tags), which is not safe to run twice at once. A separate group from the
+    # release build: that one guards main, this one guards the Releases API.
+    # Job-level so it also applies when release.yml calls this workflow.
+    concurrency:
+      group: auto-release-main
+      cancel-in-progress: false
+      queue: max
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          # Latest main: when release.yml calls this, the triggering commit is
+          # older than the manifest commit it just pushed.
+          ref: main
 
       - name: Read latest release metadata
         id: meta

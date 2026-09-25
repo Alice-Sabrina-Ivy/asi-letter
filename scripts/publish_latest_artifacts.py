@@ -99,7 +99,7 @@ def plan_copies(letter_dir: Path, keys_dir: Path, docs_dir: Path) -> List[Tuple[
         raise SystemExit("Missing required source artifact(s):\n  " + "\n  ".join(missing))
 
     # The OTS proof is deliberately OPTIONAL. There is a real window -- between a
-    # new .asc being pushed and ots-stamp-letter-asc.yml producing its proof --
+    # new .asc being pushed and release.yml stamping its proof --
     # where the newest release has no .ots yet. gen_releases_manifest.py already
     # tolerates this and records "ots": null; treating it as fatal here made this
     # stage stricter than the rest of the pipeline and turned that ordinary race

@@ -56,7 +56,7 @@ asi-letter/
 ├── scripts/          # Release, verification, and OTS automation scripts
 ├── .github/
 │   ├── workflows/    # GitHub Actions CI/CD workflows
-│   └── scripts/      # Helper utilities for CI (Pages wait, OTS helpers)
+│   └── scripts/      # CI helpers (generated-paths list and its guard)
 ├── Makefile          # Single `release` target → calls scripts/release.py
 ├── README.md         # User-facing verification instructions
 ├── AGENTS.md         # AI/Codex guide (root-level, also nested per-directory)
@@ -194,30 +194,56 @@ uses trailing double-spaces as Markdown hard breaks, so a raw `cmp` reports a
 false difference on 7 of the 14 existing releases. The `.asc` is authoritative:
 correct the `.md` to match it, never the reverse.
 
-### Shared concurrency group (deliberate, not a bug)
+### Release workflow (single pass)
 
-Five workflows share `letter-artifacts-${{ github.ref }}` with
-`cancel-in-progress: false`. GitHub keeps only ONE pending run per group, so a
-burst of triggers can drop a queued run. This is accepted rather than fixed:
-every stage of `release.py` regenerates from scratch and is idempotent, so the
-surviving run produces the same final state, and the 30-minute `ots-upgrade`
-cron re-converges anyway. Splitting the group would trade a benign dropped run
-for genuine concurrent-mutation races. Do not "fix" it by giving each workflow
-its own group.
+`release.yml` takes every change to the letter, keys, scripts or site from push to
+live site in one run. Alice asked for this redesign on 2026-09-25. It replaced
+`ots-stamp-letter-asc`, `releases-manifest`, `ots-upgrade` and `ots-verify-upgrade`,
+which chained through `workflow_run` hops. That design committed three times per
+release, triggered three Pages deploys, and spent minutes waiting on itself.
 
-**Under revision (2026-09-25).** This rule, and the Pages waits described below,
-were designed for GitHub Pages deploying *from a branch*. Under that setup,
-every auto-commit started a new Pages build that could interrupt the one in
-flight. On 2026-09-25 Alice switched Pages to deploy **from GitHub Actions**, and
-she wants the release chain streamlined. A redesign she has approved may change
-the concurrency groups and remove the Pages waits. It must still preserve:
-- the idempotent from-scratch regeneration;
-- the generated-paths guard;
-- the auto-commit loop guards;
-- auto-release gating on an `.ots` proof;
-- no two jobs mutating `main` at once.
+The jobs, in order:
+1. **`build`** stamps any `.asc` without an `.ots` and upgrades the **newest**
+   release's proof. It runs `release.py`, then `--check`, then
+   `assert_generated_paths.sh`. It makes ONE commit tagged `[release-auto]`, and
+   packages `docs/` (minus `AGENTS.md`) for Pages. Before any of that, it runs
+   `verify-clearsign.sh`: every letter must be signed by the trusted, unexpired key
+   and match its signed payload, or nothing publishes. A failed stamp (calendar
+   outage) does not block publishing: the letter goes out with its proof pending
+   (`"ots": null`), and the next run retries.
+2. **`deploy`** runs `actions/deploy-pages`. The Pages source has been "GitHub
+   Actions" since 2026-09-25.
+3. **After the deploy**, three jobs run, so search engines and the Wayback
+   Machine see the new site, not the old one:
+   - `github-release` calls `auto-release-latest-letter.yml` when the manifest, a
+     proof or the public key changed;
+   - `announce` pings IndexNow;
+   - `archive` calls `archive-release.yml`.
 
-Don't change them piecemeal outside such a redesign.
+Rules that keep this safe:
+- **Only one job changes `main`.** `build` holds the job-level concurrency group
+  `letter-artifacts-main`, which `sync-readme-fingerprint.yml` shares. Both use
+  `queue: max`, so pending runs wait their turn instead of replacing each other.
+  By default GitHub keeps one pending run per group, and a replaced push run
+  could lose its deploy. The `pages`, `auto-release-main` and
+  `archive-release-main` groups queue the same way.
+- **Bot pushes don't trigger workflows.** Commits are pushed with `GITHUB_TOKEN`,
+  which starts no push workflows. So `release.yml` deploys the site and calls the
+  Release and archive workflows itself, with no `workflow_run` chains and no
+  Pages waits. The `[release-auto]` guard keeps it loop-free if the token ever
+  changes.
+- **The schedule lives in `scheduled.yml`, never in `release.yml`.** In a public
+  repo GitHub disables a scheduled workflow after 60 days without activity, and a
+  disabled workflow runs on no trigger at all, push included. Keeping the crons
+  in a separate caller means a lapse can only pause the hourly proof check and the
+  weekly archive. It can never stop publishing. `release.yml` re-enables
+  `scheduled.yml` on every push. The proof check exits in seconds once the newest
+  proof is attested. GitHub runs schedules best-effort, often hours apart.
+- **`ots upgrade` leaves a `<proof>.bak`** whenever it changes a proof. The build
+  deletes it, and `.gitignore` ignores `*.ots.bak`. Otherwise the generated-paths
+  guard would reject it and block every upgrade.
+- **Keep one committing job.** Don't reintroduce per-step workflows that each
+  commit: every extra commit is another Pages deploy and another run in the queue.
 
 ### Committing generated artifacts in CI
 
@@ -226,7 +252,10 @@ its path list from `.github/scripts/generated_paths.sh` rather than hardcoding
 one, and **must** run `.github/scripts/assert_generated_paths.sh --baseline <snapshot>`
 straight afterwards.
 
-`releases-manifest.yml` and `ots-upgrade.yml` both previously hardcoded a short
+In this repo that workflow is `release.yml`, which also commits the proofs it stamps or
+upgrades (`letter/*.ots`, passed to the guard as an extra allowed pattern).
+
+`releases-manifest.yml` and `ots-upgrade.yml` (both since replaced) previously hardcoded a short
 list (`letter/RELEASES.json docs/letter.md docs/index.html`). Everything else the
 pipeline produced was regenerated in CI and then discarded at the commit step. On
 a new release that meant `docs/letter.md` advanced while `docs/letter.md.asc`
@@ -279,24 +308,24 @@ script needs no change.
 
 ## CI / GitHub Actions workflows
 
-All workflows share concurrency group `letter-artifacts-${{ github.ref }}` to prevent race conditions. Several jobs call `.github/scripts/wait_for_pages_idle.sh` before auto-committing to avoid interrupting GitHub Pages deployments.
-
-**GitHub Pages source: GitHub Actions (since 2026-09-25).** GitHub's automatic "pages build and deployment" (branch deploy) no longer runs on each push. Until a workflow deploys the site, `docs/` changes don't reach the live site. The release-chain redesign adds that deploy and will update this section (see **Shared concurrency group**).
+GitHub Pages deploys from GitHub Actions (since 2026-09-25). `release.yml`'s `deploy`
+job is the only thing that updates the live site. See **Release workflow (single pass)**.
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `verify-releases.yml` | push / PR | Installs GnuPG, runs `verify-clearsign.sh` — safety net for signature integrity |
-| `releases-manifest.yml` | push to `letter/**` or `keys/**`, manual | Full release pipeline + auto-commit with `[manifest-auto]` tag |
-| `auto-release-latest-letter.yml` | push to `letter/RELEASES.json`, `keys/**`, `README.md`, licenses; dispatch from `ots-upgrade`; manual | Creates/updates the GitHub Release tagged as "latest". Publishes only when `RELEASES.json`'s newest entry matches the newest letter on disk **and** carries an `.ots` proof |
-| `ots-stamp-letter-asc.yml` | push to `letter/*.asc` | Stamps new `.ots` proofs and commits them |
-| `ots-upgrade.yml` | scheduled / push / workflow_run | Upgrades existing OTS proofs and refreshes footer status |
-| `ots-verify-upgrade.yml` | manual | Inspect + upgrade a single proof ad-hoc |
+| `release.yml` | push to `main` on `letter/**`, `keys/**`, `scripts/**`, `docs/**`, `.github/scripts/**` or itself; called by `scheduled.yml`; manual (optional forced deploy) | Stamps and upgrades proofs, runs `release.py`, makes one commit tagged `[release-auto]`, deploys Pages, then updates the GitHub Release, pings IndexNow and archives |
+| `scheduled.yml` | hourly (proof check); weekly (archive) | The repo's only schedule. Calls `release.yml` and `archive-release.yml`, and is re-enabled by every push (see **Release workflow (single pass)**) |
+| `verify-releases.yml` | push / PR (any branch) | Runs `verify-clearsign.sh` — safety net for signature integrity |
+| `auto-release-latest-letter.yml` | called by `release.yml`; push to `README.md`/licenses; manual | Creates/updates the GitHub Release tagged as "latest". Publishes only when `RELEASES.json`'s newest entry matches the newest letter on disk **and** carries an `.ots` proof |
+| `archive-release.yml` | called by `release.yml` after a deploy that changed the letter or its proof; weekly via `scheduled.yml`; manual | Submits the repo to Software Heritage and (with credentials) the site to the Wayback Machine. Failures show as warnings, never fail the build |
 | `sync-readme-fingerprint.yml` | push to `keys/FINGERPRINT`, manual | Normalizes fingerprint and patches `README.md` |
-| `archive-release.yml` | push to `letter/**`, weekly cron, manual | Submits the repo to Software Heritage and (with credentials) the site to the Wayback Machine |
+
+All jobs run on `ubuntu-24.04`. The runner is pinned because `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19.
 
 ### Auto-commit convention
 Automated commits include tags in their messages to prevent re-triggering loops:
-- `[manifest-auto]` — skips `releases-manifest.yml` re-run
+- `[release-auto]` — `release.yml`'s commit; its `build` job skips pushes whose head commit carries it
+- `[skip ci]` — `sync-readme-fingerprint.yml`'s README commit
 - Check each workflow's `if:` conditions before modifying commit message formats.
 
 ---
@@ -308,11 +337,11 @@ Automated commits include tags in their messages to prevent re-triggering loops:
 - Adding new `letter/ASI-Letter-vYYYY.MM.DD.md` files (unsigned source)
 - Modifying `scripts/` logic (run `--check` after)
 - Updating `docs/assets/`
-- Editing CI workflow logic (keep concurrency groups and Pages waits intact, except as part of the approved release-chain redesign; see **Shared concurrency group**)
+- Editing CI workflow logic (keep one committing job and its concurrency group; see **Release workflow (single pass)**)
 
 ### Requires care
 - `docs/index.html` layout — avoid breaking automation markers (`<!-- release-version -->`, `data-release-version`, render markers, `structured-data` markers)
-- `.github/workflows/` — preserve concurrency groups, permissions, Pages wait calls, and auto-commit gating
+- `.github/workflows/` — preserve the single committing job, its concurrency group, the Pages permissions (`pages: write`, `id-token: write`, environment `github-pages`), and the `[release-auto]` guard
 
 ### Do not modify without intentional release process
 - Any `letter/*.asc` or `letter/*.asc.ots` file
@@ -327,10 +356,9 @@ Automated commits include tags in their messages to prevent re-triggering loops:
 |---|---|---|
 | Python 3 | All scripts | Standard library only, except `render_index_html.py` needs the `markdown-it-py` package |
 | GnuPG (`gpg`) | `verify-clearsign.sh`, `sign-and-export.sh`, CI | Must be installed for signing/verification |
-| OpenTimestamps client (`ots`) | OTS workflows | `pipx install opentimestamps-client` or `pip install opentimestamps-client` |
+| OpenTimestamps client (`ots`) | `release.yml` | `pipx install opentimestamps-client` or `pip install opentimestamps-client` |
 | `jq` | `auto-release-latest-letter.yml` | JSON parsing in shell |
 | GitHub CLI (`gh`) | `auto-release-latest-letter.yml` | Publishing GitHub Releases |
-| `curl` | `.github/scripts/wait_for_pages_idle.sh` | Pages deployment polling |
 
 ---
 
@@ -357,8 +385,8 @@ python3 scripts/release.py --check
 1. **Manual edits to generated files** — `docs/letter.md`, `docs/index.html` markers, `letter/RELEASES.json` drift from what scripts would produce.
 2. **Fingerprint formatting** — adding spaces or lowercase to `keys/FINGERPRINT` breaks manifest generation and verification scripts.
 3. **Missing `.ots` pairs** — every `.asc` must have a corresponding `.asc.ots` before publishing a GitHub Release.
-4. **Breaking auto-commit loops** — changing commit message formats without updating workflow `if:` guards can cause infinite re-triggering.
-5. **Removing Pages wait calls** — under branch-based Pages deploys, skipping `wait_for_pages_idle.sh` let auto-commits cancel in-flight Pages deployments. Now that Pages deploys from GitHub Actions, the waits are removed only as part of the approved redesign (see **Shared concurrency group**).
+4. **Breaking the auto-commit guard** — `release.yml` skips pushes whose head commit contains `[release-auto]`. Keep the bot's commit message and that `if:` in sync.
+5. **Splitting the release commit** — per-step workflows that each commit (the pre-2026-09-25 design) mean several Pages deploys and queued runs per release. Keep one committing job.
 6. **Modifying signed releases** — any change to a `.asc` file invalidates the OpenPGP signature.
 7. **CRLF drift on Windows** — see *Line endings* above. Symptom: `release.py --check`
    reports `letter/RELEASES.json is out of date` on a clean checkout, and the
@@ -367,7 +395,11 @@ python3 scripts/release.py --check
 8. **Editing `scripts/asi-public.asc` by hand** — it is generated from
    `keys/alice-asi-publickey.asc`. A stale copy makes CI verify releases against an
    outdated key export, and an expired key still exits 0, so CI will not catch it.
-9. **Assuming CI catches key expiry** — it does not. `gpg --verify` returns 0 for a
-   good signature from an expired key, printing only `[expired]`. Signing *new*
-   releases fails outright (`Unusable secret key`). Renew ahead of the expiry date.
+9. **Letting the signing key expire** — `release.yml` runs `verify-clearsign.sh` before
+   it stamps or commits anything (Alice's choice, 2026-09-25). Once the key expires,
+   nothing publishes, not even docs edits or proof upgrades, until the renewed public
+   key is pushed to `keys/`. Plain `gpg --verify` would return 0 for an expired key,
+   printing only `[expired]`, but `verify-clearsign.sh` rejects it. Signing *new*
+   releases also fails outright (`Unusable secret key`). Renew ahead of the expiry
+   date; `verify-releases` warns 30 days before.
 10. **Multi-line `file_pattern` in `git-auto-commit-action`** — it parses the input with `read -r -a ... <<< "$INPUT_FILE_PATTERN"`, which stops at the first newline, so a YAML block scalar silently stages only the first path and drops the rest. Always pass the paths space-separated on one line.
