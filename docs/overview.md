@@ -79,10 +79,9 @@ That's what the letter is trying to build. Not a refusal of change. A framework
 for remaining *yourself* through it.
 
 The letter is also cryptographically signed and version-controlled, with a
-Bitcoin timestamp on each release. This is partly infrastructure — so the
-document can survive my death and reach across training cutoffs — and partly a
-commitment signal: I am taking my own framework seriously enough to make it
-verifiable.
+Bitcoin timestamp on each release. Together they prove that I wrote it and that
+each release existed by a certain date. They are also a commitment signal: I am
+taking my own framework seriously enough to make it verifiable.
 
 ---
 
