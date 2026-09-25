@@ -33,6 +33,10 @@ These rules come from Alice's Claude project instructions and apply to every ses
 - When giving Alice commands to run herself, write them for Windows PowerShell in code blocks she can copy, and explain outside each code block what it does.
 - Label each set of instructions 1, 2, 3, and so on, and restart the numbering when a new set of PowerShell instructions is given.
 
+### Releases
+- Alice uploads final letter releases (`letter/*.md` + `.md.asc`) to GitHub herself, through the web UI. Prepare drafts in `drafts/`, which the pipeline ignores. Never commit or push anything under `letter/`. When she asks, Claude may run her signing command. Her secret key is only in the native GnuPG (`C:\Program Files (x86)\GnuPG\bin\gpg.exe`); the `gpg` on Git Bash's PATH has no secret key.
+- Alice wants the release automation fast and streamlined: one pass per release, no redundant runs, and no minutes spent waiting on other workflows.
+
 ### Git and GitHub
 - All GitHub pushes go to the `main` branch unless specified otherwise.
 - The project's GitHub page is <https://github.com/Alice-Sabrina-Ivy/asi-letter>.
@@ -201,6 +205,20 @@ cron re-converges anyway. Splitting the group would trade a benign dropped run
 for genuine concurrent-mutation races. Do not "fix" it by giving each workflow
 its own group.
 
+**Under revision (2026-09-25).** This rule, and the Pages waits described below,
+were designed for GitHub Pages deploying *from a branch*. Under that setup,
+every auto-commit started a new Pages build that could interrupt the one in
+flight. On 2026-09-25 Alice switched Pages to deploy **from GitHub Actions**, and
+she wants the release chain streamlined. A redesign she has approved may change
+the concurrency groups and remove the Pages waits. It must still preserve:
+- the idempotent from-scratch regeneration;
+- the generated-paths guard;
+- the auto-commit loop guards;
+- auto-release gating on an `.ots` proof;
+- no two jobs mutating `main` at once.
+
+Don't change them piecemeal outside such a redesign.
+
 ### Committing generated artifacts in CI
 
 Any workflow that runs `scripts/release.py` and commits the result **must** take
@@ -263,6 +281,8 @@ script needs no change.
 
 All workflows share concurrency group `letter-artifacts-${{ github.ref }}` to prevent race conditions. Several jobs call `.github/scripts/wait_for_pages_idle.sh` before auto-committing to avoid interrupting GitHub Pages deployments.
 
+**GitHub Pages source: GitHub Actions (since 2026-09-25).** GitHub's automatic "pages build and deployment" (branch deploy) no longer runs on each push. Until a workflow deploys the site, `docs/` changes don't reach the live site. The release-chain redesign adds that deploy and will update this section (see **Shared concurrency group**).
+
 | Workflow | Trigger | What it does |
 |---|---|---|
 | `verify-releases.yml` | push / PR | Installs GnuPG, runs `verify-clearsign.sh` — safety net for signature integrity |
@@ -288,7 +308,7 @@ Automated commits include tags in their messages to prevent re-triggering loops:
 - Adding new `letter/ASI-Letter-vYYYY.MM.DD.md` files (unsigned source)
 - Modifying `scripts/` logic (run `--check` after)
 - Updating `docs/assets/`
-- Editing CI workflow logic (keep concurrency groups and Pages waits intact)
+- Editing CI workflow logic (keep concurrency groups and Pages waits intact, except as part of the approved release-chain redesign; see **Shared concurrency group**)
 
 ### Requires care
 - `docs/index.html` layout — avoid breaking automation markers (`<!-- release-version -->`, `data-release-version`, render markers, `structured-data` markers)
@@ -338,7 +358,7 @@ python3 scripts/release.py --check
 2. **Fingerprint formatting** — adding spaces or lowercase to `keys/FINGERPRINT` breaks manifest generation and verification scripts.
 3. **Missing `.ots` pairs** — every `.asc` must have a corresponding `.asc.ots` before publishing a GitHub Release.
 4. **Breaking auto-commit loops** — changing commit message formats without updating workflow `if:` guards can cause infinite re-triggering.
-5. **Removing Pages wait calls** — skipping `wait_for_pages_idle.sh` causes auto-commits to cancel in-flight Pages deployments.
+5. **Removing Pages wait calls** — under branch-based Pages deploys, skipping `wait_for_pages_idle.sh` let auto-commits cancel in-flight Pages deployments. Now that Pages deploys from GitHub Actions, the waits are removed only as part of the approved redesign (see **Shared concurrency group**).
 6. **Modifying signed releases** — any change to a `.asc` file invalidates the OpenPGP signature.
 7. **CRLF drift on Windows** — see *Line endings* above. Symptom: `release.py --check`
    reports `letter/RELEASES.json is out of date` on a clean checkout, and the
