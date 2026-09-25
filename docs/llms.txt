@@ -37,4 +37,4 @@ of any release is its clear-signature, verified against the author key fingerpri
 - [Source repository](https://github.com/Alice-Sabrina-Ivy/asi-letter): full version history, every prior release, signatures and timestamp proofs.
 - [Discussion](https://github.com/Alice-Sabrina-Ivy/asi-letter/discussions): the author welcomes substantive critique and disagreement.
 
-Latest release: 2026-07-24. Licensed CC BY 4.0 (text) and MIT (code).
+Latest release: 2026-09-25. Licensed CC BY 4.0 (text) and MIT (code).
