@@ -1,6 +1,6 @@
 {
   "schema": "asi-letter/releases#2",
-  "updated": "2026-09-28T20:11:51Z",
+  "updated": "2026-09-28T22:08:30Z",
   "key": {
     "fingerprint_current": "2C101FA70F42F93052F82FC755387365B7949796",
     "path": "keys/alice-asi-publickey.asc"
@@ -27,9 +27,9 @@
         },
         "ots": {
           "path": "letter/ASI-Letter-v2026.09.28.md.asc.ots",
-          "size": 875,
-          "sha256": "e617085006e252e546ee54b36540c82df40017323494675c851bcf54bbe2e173",
-          "sha512": "dfe17bfbfa3b7248f823ef24081bead4896ae8c8c0500f75f53a49aaa9bd1852b08e0d438884144bb70b891249892ad93686f4b4a2f223d28d6e05a0e2c007ae",
+          "size": 1737,
+          "sha256": "f636b3b3103b3fe7de42b0792d99425ae8c95f673b2c8d39fa0cb4d2ef20c9ab",
+          "sha512": "2e595ba94613251b55f648fcfa7b7b0ae02507b2393c77ab327dcfdff4a56fe06a809fd6ed603896c6eeccc4d4f2d607de44150807c362b9e74e5e60ff1f469d",
           "encoding": "binary"
         }
       }
