@@ -148,10 +148,57 @@ def _wrap_in_signature_footer(parent: ET.Element, paragraphs: list) -> None:
     footer = ET.Element("footer", {"class": "signature"})
     for offset, paragraph in enumerate(paragraphs):
         parent.remove(paragraph)
-        if offset == len(paragraphs) - 1 and len(paragraphs) > 1:
+        last = offset == len(paragraphs) - 1 and len(paragraphs) > 1
+        if last and normalize(paragraph_text(paragraph)) in {"she/her", "she / her"}:
             paragraph.set("class", "pronouns")
         footer.append(paragraph)
     parent.insert(index, footer)
+
+
+def _split_at_line_breaks(paragraph: ET.Element) -> list:
+    """Split a paragraph into one <p> per source line, keeping every word.
+
+    The letter writes its sign-off as three lines joined by soft breaks, and a
+    browser runs those together ("…until we become— Alice Sabrina Ivy she/her").
+    Splitting at the breaks shows the sign-off laid out as it is in the signed
+    Markdown, without adding, dropping or reordering any text.
+    """
+
+    lines: list = [[]]
+
+    def add_text(text: str) -> None:
+        for number, part in enumerate(text.split("\n")):
+            if number:
+                lines.append([])
+            if part:
+                lines[-1].append(part)
+
+    add_text(paragraph.text or "")
+    for child in list(paragraph):
+        tail, child.tail = child.tail, None
+        lines[-1].append(child)
+        add_text(tail or "")
+
+    result = []
+    for items in lines:
+        if not any(isinstance(item, ET.Element) or item.strip() for item in items):
+            continue
+        line = ET.Element("p")
+        previous = None
+        for item in items:
+            if isinstance(item, ET.Element):
+                line.append(item)
+                previous = item
+            elif previous is None:
+                line.text = (line.text or "") + item
+            else:
+                previous.tail = (previous.tail or "") + item
+        if line.text:
+            line.text = line.text.strip() if not len(line) else line.text.lstrip()
+        if len(line) and line[-1].tail:
+            line[-1].tail = line[-1].tail.rstrip()
+        result.append(line)
+    return result
 
 
 def ensure_signature(root: ET.Element) -> bool:
@@ -173,7 +220,12 @@ def ensure_signature(root: ET.Element) -> bool:
     for parent, paragraph in paragraph_items:
         text = normalize(paragraph_text(paragraph))
         if re.match(r"^until we meet.+alice sabrina ivy(\s+she/her)?$", text):
-            _wrap_in_signature_footer(parent, [paragraph])
+            lines = _split_at_line_breaks(paragraph)
+            index = list(parent).index(paragraph)
+            parent.remove(paragraph)
+            for offset, line in enumerate(lines):
+                parent.insert(index + offset, line)
+            _wrap_in_signature_footer(parent, lines)
             return True
 
     # Three-paragraph form: separated by blank lines.
