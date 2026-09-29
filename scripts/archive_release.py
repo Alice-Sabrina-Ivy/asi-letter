@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Submit the repository and site to public archives, so releases outlive this host.
 
-The letter states it is designed to outlive its author. That claim needs archives
-that do not depend on this GitHub account continuing to exist, and archives only
-help if they are refreshed -- a snapshot of a retired release is worse than
-useless, because it looks current.
+A signed release is authentic wherever it is found, but only if a copy can still
+be found. That needs archives that do not depend on this GitHub account
+continuing to exist, and archives only help if they are refreshed -- a snapshot
+of a retired release is worse than useless, because it looks current.
 
 Two archives, with different requirements:
 

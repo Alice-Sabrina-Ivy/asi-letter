@@ -74,6 +74,16 @@ STAGES: List[Stage] = [
         skip_flag="skip_timestamp",
         help_text="the Bitcoin timestamp footer",
     ),
+    # Last, and read-only: checks the finished page shows exactly the signed
+    # words, that its markers and links hold, and that overview.html matches
+    # overview.md. --check passes by construction in the job that regenerates;
+    # this is the check that looks at the result.
+    Stage(
+        name="Check published site",
+        script="check_site.py",
+        skip_flag="skip_site_check",
+        help_text="the published-page check",
+    ),
 ]
 
 
