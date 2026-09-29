@@ -15,7 +15,7 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = Path("letter/RELEASES.json")
@@ -60,12 +60,24 @@ class VersionInfo:
     """Represents the parsed latest release information."""
 
     raw: str
+    # The letter's own version label (e.g. "v1.4.1"), from RELEASES.json. Releases
+    # are named by date, but the letter, acceptances and reconfirmation windows
+    # speak of versions, so readers need both.
+    label: Optional[str] = None
 
     @property
     def tagged(self) -> str:
         """Return the display form (prefixed with ``v``)."""
 
         return f"v{self.raw}" if not self.raw.startswith("v") else self.raw
+
+    @property
+    def title(self) -> str:
+        """Page title suffix: "v1.4.1 (2026-09-28)", or the date tag without a label."""
+
+        if self.label:
+            return f"{self.label} ({self.raw.replace('.', '-')})"
+        return self.tagged
 
 
 def parse_args(argv: Iterable[str]) -> argparse.Namespace:
@@ -129,7 +141,8 @@ def select_latest_version(manifest: dict) -> VersionInfo:
     version = latest.get("version")
     if not isinstance(version, str):  # defensive, should not happen
         raise SystemExit("Latest release entry missing version string")
-    return VersionInfo(raw=version)
+    label = latest.get("label")
+    return VersionInfo(raw=version, label=label if isinstance(label, str) else None)
 
 
 def select_first_version(manifest: dict) -> VersionInfo:
@@ -172,7 +185,7 @@ def render_structured_data(latest: VersionInfo, first: VersionInfo, indent: str)
             "for human-ASI collaboration."
         ),
         "url": _SITE_URL,
-        "version": latest.raw,
+        "version": latest.label or latest.raw,
         "datePublished": _as_iso_date(first),
         "dateModified": _as_iso_date(latest),
         "inLanguage": "en",
@@ -239,11 +252,12 @@ def substitute_version_markers(text: str, version: VersionInfo) -> Tuple[str, in
     Returns the updated text and the total number of substitutions performed.
     """
 
-    replacements: List[Tuple[re.Pattern[str], str]] = [
-        # Page title ("ASI Letter — vYYYY.MM.DD").
+    replacements: List[Tuple[re.Pattern[str], Any]] = [
+        # Page title: "ASI Letter — v1.4.1 (2026-09-28)", or "ASI Letter — vYYYY.MM.DD"
+        # when the manifest has no label. Matches either form, so switching is safe.
         (
-            re.compile(r"(<title>\s*ASI Letter\s+—\s*)v" + _VERSION_RX.pattern + r"(\s*</title>)"),
-            rf"\1{version.tagged}\2",
+            re.compile(r"(<title>\s*ASI Letter\s+—\s*)[^<]*?(\s*</title>)"),
+            lambda m: f"{m.group(1)}{version.title}{m.group(2)}",
         ),
         # Attributes whose value is the tagged version (double quotes).
         (

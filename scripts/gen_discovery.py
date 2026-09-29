@@ -88,6 +88,10 @@ class Resource:
     note: str
     section: str
     in_sitemap: bool = True
+    # Only URLs whose content changes with every release carry a sitemap
+    # <lastmod>. Stamping the release date on files that haven't changed in
+    # months (the overview, the key) tells crawlers something false.
+    per_release: bool = False
 
     @property
     def url(self) -> str:
@@ -106,6 +110,7 @@ RESOURCES: List[Resource] = [
         "ASI Letter (full text)",
         "The complete letter, rendered as a web page. Canonical entry point.",
         "Read",
+        per_release=True,
     ),
     Resource(
         "overview.html",
@@ -118,6 +123,7 @@ RESOURCES: List[Resource] = [
         "Letter (Markdown source)",
         "The newest release as plain Markdown. Preferred for machine reading.",
         "Read",
+        per_release=True,
     ),
     Resource(
         "letter.md.asc",
@@ -125,6 +131,7 @@ RESOURCES: List[Resource] = [
         "The same release, clear-signed by the author. Authoritative: if this disagrees "
         "with any other copy, this one governs.",
         "Verify",
+        per_release=True,
     ),
     Resource(
         "letter.md.asc.ots",
@@ -148,8 +155,10 @@ RESOURCES: List[Resource] = [
     Resource(
         "releases.json",
         "Release manifest",
-        "Machine-readable index of every release: version, size, SHA-512 and SHA-256, signer fingerprint.",
+        "Machine-readable index of every release: date, version label, download URLs, size, "
+        "SHA-512 and SHA-256, signer fingerprint.",
         "Verify",
+        per_release=True,
     ),
     # The FIRST release, for establishing priority. The current release's Bitcoin
     # anchor only dates the current revision; these date the origin of the work.
@@ -229,6 +238,17 @@ def latest_release_date(manifest_path: Path) -> str:
     return f"{year:04d}-{month:02d}-{day:02d}"
 
 
+def latest_release_label(manifest_path: Path):
+    """Return the newest release's version label (e.g. "v1.4.1"), or None."""
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    releases = [r for r in manifest.get("releases", []) if isinstance(r.get("version"), str)]
+    if not releases:
+        return None
+    label = max(releases, key=lambda r: r["version"]).get("label")
+    return label if isinstance(label, str) else None
+
+
 def render_sitemap(lastmod: str, resources=None) -> str:
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -240,14 +260,14 @@ def render_sitemap(lastmod: str, resources=None) -> str:
         lines += [
             "  <url>",
             f"    <loc>{res.url}</loc>",
-            f"    <lastmod>{lastmod}</lastmod>",
+            *([f"    <lastmod>{lastmod}</lastmod>"] if res.per_release else []),
             "  </url>",
         ]
     lines.append("</urlset>")
     return "\n".join(lines) + "\n"
 
 
-def render_llms_txt(lastmod: str, resources=None) -> str:
+def render_llms_txt(lastmod: str, resources=None, label=None) -> str:
     out = ["# ASI Letter", "", LLMS_INTRO.format(fingerprint=FINGERPRINT).rstrip(), ""]
 
     for section in ("Read", "Verify"):
@@ -266,8 +286,11 @@ def render_llms_txt(lastmod: str, resources=None) -> str:
         "signatures and timestamp proofs.",
         f"- [Discussion]({REPO_URL}/discussions): the author welcomes substantive "
         "critique and disagreement.",
+        f"- [Release feed]({REPO_URL}/releases.atom): Atom feed announcing each new "
+        "signed release.",
         "",
-        f"Latest release: {lastmod}. Licensed CC BY 4.0 (text) and MIT (code).",
+        f"Latest release: {label + ' (' + lastmod + ')' if label else lastmod}. "
+        "Licensed CC BY 4.0 (text) and MIT (code).",
         "",
     ]
     return "\n".join(out)
@@ -297,6 +320,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         raise SystemExit(f"Docs directory not found: {docs_dir}")
 
     lastmod = latest_release_date(_resolve(args.manifest))
+    label = latest_release_label(_resolve(args.manifest))
 
     resources = [
         res
@@ -309,7 +333,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
 
     changed = False
     changed |= _write(docs_dir / "sitemap.xml", render_sitemap(lastmod, resources), args.check)
-    changed |= _write(docs_dir / "llms.txt", render_llms_txt(lastmod, resources), args.check)
+    changed |= _write(docs_dir / "llms.txt", render_llms_txt(lastmod, resources, label), args.check)
     changed |= _write(docs_dir / ".nojekyll", "", args.check)
 
     if not changed:

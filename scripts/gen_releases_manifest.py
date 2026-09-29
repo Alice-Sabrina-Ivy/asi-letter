@@ -17,6 +17,14 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 RE_VERSION = re.compile(r"ASI-Letter-v(?P<ver>\d{4}\.\d{2}\.\d{2})\.md\Z")
 
+# Every file entry carries an absolute download URL. The paths are repo-relative
+# (letter/...), and GitHub Pages serves only docs/, so a reader of the published
+# docs/releases.json could not fetch a release from its path alone.
+RAW_BASE = "https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/"
+
+# "v1.4.1 (2026-09-28)" -- how the letter's patch notes name each signed release.
+RE_LABELLED_RELEASE = re.compile(r"\bv(\d+\.\d+\.\d+) \((\d{4})-(\d{2})-(\d{2})\)")
+
 
 class ManifestError(RuntimeError):
     """Raised when manifest generation fails."""
@@ -100,8 +108,10 @@ def file_info(path: Path, base: Path) -> Optional[Dict[str, Any]]:
     # SHA-512 is the project's hash going forward (acceptance records name a
     # release by it). SHA-256 stays: it is what each .asc.ots commits to, since
     # OpenTimestamps has no SHA-512, and older records may name releases by it.
+    relative = relativize(path, base)
     return {
-        "path": relativize(path, base),
+        "path": relative,
+        "url": RAW_BASE + relative,
         "size": int(stat.st_size),
         "sha256": hashlib.sha256(data).hexdigest(),
         "sha512": hashlib.sha512(data).hexdigest(),
@@ -172,8 +182,34 @@ def ots_metadata(ots_path: Path, base: Path) -> Optional[Dict[str, Any]]:
     return None
 
 
+def release_labels(letter_dir: Path) -> Dict[str, str]:
+    """Map each release date (YYYY.MM.DD) to its version label (vX.Y.Z).
+
+    Releases are named by date, but the letter, acceptances and reconfirmation
+    windows speak of versions. The newest signed release lists every release with
+    both ("### v1.4.1 (2026-09-28)", "* **v1.3.3 (2026-07-24):**"), so it is the
+    authoritative map. It is taken from the newest release only: older releases
+    order and format their notes differently, and one footer was mislabelled
+    (v1.3.2's says v1.3.1), which the newest release's record corrects.
+    """
+
+    dated = []
+    for md_path in letter_dir.glob("ASI-Letter-v*.md"):
+        match = RE_VERSION.fullmatch(md_path.name)
+        if match:
+            dated.append((match.group("ver"), md_path))
+    if not dated:
+        return {}
+    _, newest = max(dated)
+    labels: Dict[str, str] = {}
+    for version, year, month, day in RE_LABELLED_RELEASE.findall(newest.read_text(encoding="utf-8")):
+        labels.setdefault(f"{year}.{month}.{day}", f"v{version}")
+    return labels
+
+
 def collect_releases(letter_dir: Path, base: Path, current_fp: str) -> List[Dict[str, Any]]:
     releases: List[Dict[str, Any]] = []
+    labels = release_labels(letter_dir)
     for md_path in letter_dir.glob("ASI-Letter-v*.md"):
         match = RE_VERSION.fullmatch(md_path.name)
         if not match:
@@ -192,9 +228,12 @@ def collect_releases(letter_dir: Path, base: Path, current_fp: str) -> List[Dict
             "uid": sig_meta["uid"],
         }
 
+        entry: Dict[str, Any] = {"version": version}
+        if version in labels:
+            entry["label"] = labels[version]
         releases.append(
             {
-                "version": version,
+                **entry,
                 "signer": signer,
                 "files": {
                     "md": require_file(md_path, base, "release markdown"),
