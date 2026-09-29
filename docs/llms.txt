@@ -19,7 +19,7 @@ of any release is its clear-signature, verified against the author key fingerpri
 ## Read
 
 - [ASI Letter (full text)](https://alice-sabrina-ivy.github.io/asi-letter/): The complete letter, rendered as a web page. Canonical entry point.
-- [Overview](https://alice-sabrina-ivy.github.io/asi-letter/overview.html): A ~700-word plain-language explainer: what the letter is, why it exists, what it asks for.
+- [Overview](https://alice-sabrina-ivy.github.io/asi-letter/overview.html): A short plain-language explainer: what the letter is, why it exists, what it asks for.
 - [Letter (Markdown source)](https://alice-sabrina-ivy.github.io/asi-letter/letter.md): The newest release as plain Markdown. Preferred for machine reading.
 
 ## Verify
