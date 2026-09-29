@@ -664,7 +664,23 @@ def render_markdown(markdown_text: str) -> RenderResult:
     insert_cta(root)
     add_heading_permalinks(root)
     rendered = "\n".join(ET.tostring(child, encoding="unicode") for child in list(root))
+    rendered = close_empty_elements(rendered)
     return RenderResult(html=rendered, signature_found=signature_found)
+
+
+# ElementTree writes an empty element as "<a ... />". HTML has no self-closing
+# tags except the void ones (br, img, wbr, ...): a browser reads "<a ... />" as an
+# <a> that never closes, and it swallows the text after it. The heading "#" links
+# did exactly that: every paragraph after a heading turned into part of an
+# invisible link until the next link closed it. Void elements keep "/>".
+_EMPTY_NON_VOID = re.compile(
+    r"<(a|b|blockquote|code|dd|div|dl|dt|em|footer|h[1-6]|i|li|nav|ol|p|pre|s|section"
+    r"|span|strong|sub|sup|table|tbody|td|th|thead|tr|u|ul)(\s[^<>]*?)?\s*/>"
+)
+
+
+def close_empty_elements(rendered: str) -> str:
+    return _EMPTY_NON_VOID.sub(lambda m: f"<{m.group(1)}{m.group(2) or ''}></{m.group(1)}>", rendered)
 
 
 def replace_render_block(text: str, render_html: str) -> Tuple[str, int]:

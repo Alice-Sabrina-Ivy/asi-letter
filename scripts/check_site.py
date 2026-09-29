@@ -18,6 +18,10 @@ everything. Nothing looked at the finished page. This does, read-only:
 6. docs/overview.html still says what docs/overview.md says (it is maintained by
    hand and once drifted for weeks), and its JSON-LD fingerprint matches
    keys/FINGERPRINT.
+7. Neither page writes a non-void HTML element as "<a ... />". A browser reads
+   that as a tag that never closes, and it swallows the text after it. The words
+   are all still in the file, so check 1 can't see it. This happened on
+   2026-09-28: the heading "#" links hid every paragraph that followed a heading.
 
 Usage:
     python3 scripts/check_site.py [--check]
@@ -112,6 +116,7 @@ def latest_release() -> dict:
 def check_index(errors: List[str]) -> None:
     page = (DOCS / "index.html").read_text(encoding="utf-8")
 
+    check_self_closing("index.html", page, errors)
     for marker in SINGLE_MARKERS:
         count = page.count(marker)
         if count != 1:
@@ -162,9 +167,25 @@ def check_index(errors: List[str]) -> None:
                 errors.append(f"index.html: Table of Contents entry is not a link: {html_words(item)[:8]}")
 
 
+# Elements HTML allows to end in "/>". Any other "<tag ... />" is read by a
+# browser as an opening tag that never closes, which silently swallows what
+# follows (every word is still in the file, so the word check can't see it).
+VOID_ELEMENTS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link",
+                 "meta", "source", "track", "wbr"}
+
+
+def check_self_closing(name: str, page: str, errors: List[str]) -> None:
+    html_only = re.sub(r"(?s)<svg\b.*?</svg>", " ", page)  # SVG may self-close anything
+    html_only = re.sub(r"(?s)<script\b.*?</script>", " ", html_only)
+    bad = sorted({tag.lower() for tag in re.findall(r"<([A-Za-z][\w-]*)\b[^<>]*/>", html_only)} - VOID_ELEMENTS)
+    for tag in bad:
+        errors.append(f"{name}: <{tag} ... /> is not self-closing in HTML; it swallows the content after it")
+
+
 def check_overview(errors: List[str]) -> None:
     page = (DOCS / "overview.html").read_text(encoding="utf-8")
     source = (DOCS / "overview.md").read_text(encoding="utf-8")
+    check_self_closing("overview.html", page, errors)
 
     heading = re.search(r"(?s)<h1>(.*?)</h1>", page)
     content = re.search(r'(?s)<div class="content">(.*?)</div>\s*<nav class="footer-nav">', page)
