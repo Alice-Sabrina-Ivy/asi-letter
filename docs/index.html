@@ -1604,17 +1604,39 @@
   var current = null, showTimer = 0, hideTimer = 0;
 
   function isHeading(el) { return /^H[1-6]$/.test(el.tagName); }
+  function isList(el) { return el && (el.tagName === "UL" || el.tagName === "OL"); }
 
-  // Copy the target clause. A heading brings its first two blocks; a list item
-  // is shown in a list of the same kind, keeping its number.
+  // A paragraph that only introduces what follows: a bold label on its own
+  // ("**Version succession**" above its list) or a lead-in ending in ":".
+  function isLeadIn(el) {
+    var text = el.textContent.replace(/\s+/g, " ").trim();
+    var label = el.querySelector("strong");
+    return /:$/.test(text) || (label && label.textContent.replace(/\s+/g, " ").trim() === text);
+  }
+
+  // Copy the target clause. A heading brings its first two blocks. A paragraph
+  // that leads into a list, or into its body, brings them (up to two blocks, and
+  // never the next heading, rule, or clause of its own). A list item is shown in
+  // a list of the same kind, keeping its number. A table cell brings its row,
+  // under the table's header.
   function build(id) {
     var target = document.getElementById(id);
     if (!target || !root.contains(target)) return null;
     var box = document.createElement("div");
+    var next, taken = 0;
     if (isHeading(target)) {
       box.appendChild(target.cloneNode(true));
-      var next = target.nextElementSibling, taken = 0;
+      next = target.nextElementSibling;
       while (next && !isHeading(next) && taken < 2) {
+        box.appendChild(next.cloneNode(true));
+        next = next.nextElementSibling;
+        taken++;
+      }
+    } else if (target.tagName === "P") {
+      box.appendChild(target.cloneNode(true));
+      next = target.nextElementSibling;
+      var limit = isLeadIn(target) ? 2 : (isList(next) ? 1 : 0);
+      while (next && taken < limit && !next.id && !isHeading(next) && next.tagName !== "HR") {
         box.appendChild(next.cloneNode(true));
         next = next.nextElementSibling;
         taken++;
@@ -1629,8 +1651,12 @@
       list.appendChild(target.cloneNode(true));
       box.appendChild(list);
     } else if (target.tagName === "TD" || target.tagName === "TH") {
-      var cell = target.cloneNode(true);
-      while (cell.firstChild) box.appendChild(cell.firstChild);
+      var table = target.closest("table"), row = document.createElement("table");
+      if (table && table.tHead) row.appendChild(table.tHead.cloneNode(true));
+      var body = document.createElement("tbody");
+      body.appendChild(target.parentNode.cloneNode(true));
+      row.appendChild(body);
+      box.appendChild(row);
     } else {
       box.appendChild(target.cloneNode(true));
     }
