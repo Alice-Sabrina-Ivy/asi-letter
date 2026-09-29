@@ -12,7 +12,7 @@ the related continuous validation jobs in more detail.
 ### `release.py`
 
 ```
-python3 scripts/release.py [--check|--dry-run] [--skip-sync] [--skip-manifest] [--skip-metadata] [--skip-render] [--skip-artifacts] [--skip-discovery] [--skip-timestamp]
+python3 scripts/release.py [--check|--dry-run] [--skip-sync] [--skip-manifest] [--skip-metadata] [--skip-render] [--skip-artifacts] [--skip-discovery] [--skip-timestamp] [--skip-site-check]
 ```
 
 * Runs the scripts in the following order, aborting on the first failure:
@@ -23,6 +23,7 @@ python3 scripts/release.py [--check|--dry-run] [--skip-sync] [--skip-manifest] [
   5. `publish_latest_artifacts.py`
   6. `gen_discovery.py`
   7. `gen_timestamp_footer.py`
+  8. `check_site.py` (read-only)
 * Pass `--check` or `--dry-run` to forward the read-only mode supported by the
   underlying tools. This is useful in CI or when verifying that the working tree
   is already up to date.
@@ -63,6 +64,12 @@ project's hash going forward: from v1.4.1 the letter names an accepted release b
 the SHA-512 of its `.md.asc`. SHA-256 stays because it is what each `.asc.ots`
 commits to (OpenTimestamps has no SHA-512), and older records may use it.
 
+Each file entry also has a `url` that downloads it (`raw.githubusercontent.com`,
+`main` branch). Each release has a `label` such as `v1.4.1 (2026-09-28)`, read from
+the newest release's patch notes, where every release is listed as
+`vX.Y.Z (YYYY-MM-DD)`. A release that the patch notes do not list gets no
+label, and nothing else changes.
+
 ```
 python3 scripts/gen_releases_manifest.py [--output PATH] [--check]
 ```
@@ -80,6 +87,11 @@ rebuilt wholesale on every run rather than hand-maintained. `datePublished` is
 derived from the *oldest* manifest entry, `version`/`dateModified` from the
 newest. The payload is serialized with `json.dumps` (not string-built) so values
 are escaped correctly inside the `<script>` element.
+
+The page title (`ASI Letter — v1.4.1 (2026-09-28)`) and the JSON-LD `version`
+use the release's `label` from the manifest, and fall back to the date version
+(`v2026.09.28`) when there is none. `data-release-version` and the
+`release-version` comment always carry the date version.
 
 The Open Graph and Twitter tags in `<head>` deliberately contain no version
 string, so they need no automation and cannot go stale.
@@ -109,6 +121,24 @@ follow the document as it evolves -- no anchor map to maintain. Measured across
 the existing 14 releases, 98% of anchors survive any given release unchanged. A
 Table of Contents entry that matches no heading raises instead of rendering as
 plain text, so a half-linked contents page cannot ship silently.
+
+Other presentation steps, all derived on every build:
+
+* **Cross-references.** A bold span becomes a link when its words exactly match
+  a defined label (a bold label opening a paragraph, list item or table cell) or a
+  heading. Patch notes are a record, so they never define a term. But a patch-note
+  item that opens with a bold label (`- **Key rotation:** ...`) links to the rule
+  of that name when exactly one rule matches, so new patch notes link themselves.
+* **Labelled lines.** A paragraph in which every line starts with a bold label
+  ending in `:` (the author block) is split into one paragraph per line.
+* **Fingerprint.** The `Author key fingerprint:` value gets a line-break hint
+  (`<wbr>`) between each 4-character group, so a narrow screen never breaks it
+  inside a group.
+* **Heading links.** Each `h2`–`h4` gets a `#` link that appears on hover. It is
+  hidden from screen readers, since the heading itself is already a target.
+
+None of these add or remove words: `check_site.py` compares the finished page
+with the signed text.
 
 ```
 python3 scripts/render_index_html.py [--index PATH] [--markdown PATH] [--check]
@@ -146,15 +176,18 @@ python3 scripts/publish_latest_artifacts.py [--letter-dir PATH] [--keys-dir PATH
 Generates the site's discovery surfaces from a single table of canonical URLs,
 so they cannot drift apart or go stale:
 
-* `docs/sitemap.xml` — every published URL, with `lastmod` taken from the
-  newest release in the manifest.
+* `docs/sitemap.xml` — every published URL. The URLs that change with each
+  release (the page, `letter.md`, `letter.md.asc`, `releases.json`) carry `lastmod`
+  from the newest release in the manifest. The others (the key, the overview) omit
+  it rather than claim a change date they don't have.
 * `docs/llms.txt` — a structured index for automated readers, describing what
   the letter is, which file is authoritative, and how to verify it. It also
   points at the FIRST release and its Bitcoin anchor: the current release's
   timestamp only dates the current revision, so the original is what establishes
   when the work existed. Those two entries are absolute `raw.githubusercontent`
   URLs because Pages serves only `docs/`; a sitemap may list only URLs on its own
-  host, so they are `llms.txt`-only by construction.
+  host, so they are `llms.txt`-only by construction. It also names the latest
+  release by its label and links GitHub's Atom feed of releases.
 * `docs/.nojekyll` — makes Pages serve `docs/` verbatim rather than running it
   through Jekyll, which silently drops paths beginning with `.` or `_`.
 
@@ -186,6 +219,38 @@ Two details worth keeping:
   "existed prior to this block", so the earliest is the tightest true statement.
   The old `.github/scripts/extract_block_height.py` (since removed) reported the
   highest — still true, but weaker.
+
+### `check_site.py`
+
+The last stage, and read-only. `release.py --check` proves only that each stage
+would regenerate its output identically, which passes by construction in the job
+that just regenerated everything. This check looks at the finished site:
+
+1. The letter on `docs/index.html` has exactly the words of `docs/letter.md`, in
+   order. It strips Markdown syntax from the source and tags from the page, then
+   compares words. It deliberately does not use `markdown-it-py`: a library change
+   would alter both sides alike and pass unnoticed.
+2. The only site chrome inside the letter is the button bar after the sign-off, and
+   the sign-off is present.
+3. Each generated marker appears exactly once, and the version markers and title
+   name the newest release.
+4. Every in-page link (`#...`) resolves, and no `id` repeats.
+5. Every Table of Contents entry is a link.
+6. `docs/overview.html` says what `docs/overview.md` says, and its JSON-LD
+   fingerprint matches `keys/FINGERPRINT`.
+
+```
+python3 scripts/check_site.py
+```
+
+`--check` is accepted, and ignored, so `release.py` can run every stage the same
+way.
+
+### `requirements.txt`
+
+Exact versions of the packages CI installs (`markdown-it-py` and the
+OpenTimestamps client, with their dependencies). They were taken from a passing CI
+run. Upgrading is a deliberate edit, followed by a run of the full pipeline.
 
 ## Signing and verification helpers
 
