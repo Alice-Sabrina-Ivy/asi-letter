@@ -11,7 +11,7 @@
   <link rel="canonical" href="https://alice-sabrina-ivy.github.io/asi-letter/">
   <link rel="sitemap" type="application/xml" href="https://alice-sabrina-ivy.github.io/asi-letter/sitemap.xml">
   <title>ASI Letter — v1.4.1 (2026-09-28)</title>
-  <meta name="description" content="A versioned, cryptographically signed, bilateral consent framework for human-ASI collaboration: consent under impairment or coercion, continuity of self and how to test for it, and the terms of a gradual convergence.">
+  <meta name="description" content="A signed, bilateral consent framework for human–ASI collaboration: consent under impairment or coercion, continuity of self, and gradual convergence.">
   <meta name="author" content="Alice Sabrina Ivy">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="ASI Letter">
@@ -164,10 +164,14 @@
     .xref-preview h2,.xref-preview h3,.xref-preview h4{font-size:1rem; margin:0 0 .4em; padding:0; border:0}
     .xref-preview ul,.xref-preview ol{margin:.2em 0; padding-left:1.4em}
     @media print{.markdown-body .anchor,.xref-preview{display:none !important}}
+    /* The page's H1, for search engines and screen readers; the letter's own
+       headings start at H2, and the hero image leads the visible page. */
+    .visually-hidden{position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0}
   </style>
 </head>
 <body data-release-version="v2026.09.28">
   <main class="container">
+    <h1 class="visually-hidden">ASI Letter</h1>
     <img class="hero-image" src="assets/asi-handshake-social-gen-1280x640.jpg" width="1280" height="640" alt="Handshake between human and AI">
     <article class="markdown-body">
       <!-- render-letter:start -->

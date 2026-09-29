@@ -115,7 +115,7 @@ RESOURCES: List[Resource] = [
     Resource(
         "overview.html",
         "Overview",
-        "A ~700-word plain-language explainer: what the letter is, why it exists, what it asks for.",
+        "A short plain-language explainer: what the letter is, why it exists, what it asks for.",
         "Read",
     ),
     Resource(
