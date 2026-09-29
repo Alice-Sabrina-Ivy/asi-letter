@@ -1,0 +1,16 @@
+# Exact versions for the release workflow (release.yml), taken from the last
+# successful release run (2026-09-28, CPython 3.14.7). Pinned so a new upstream
+# release can't change the rendered page or break OpenTimestamps stamping without
+# anyone deciding to upgrade. Bump deliberately: change a version, push, and check
+# the release run.
+markdown-it-py==4.2.0
+mdurl==0.1.2
+opentimestamps-client==0.7.2
+opentimestamps==0.4.5
+python-bitcoinlib==0.12.2
+pycryptodomex==3.23.0
+GitPython==3.1.62
+gitdb==4.0.12
+smmap==5.0.3
+appdirs==1.4.4
+PySocks==1.7.1

@@ -111,12 +111,15 @@ jobs:
       - uses: actions/setup-python@v6
         if: steps.pre.outputs.run == 'true'
         with:
-          python-version: "3.x"
+          # Pinned like the runner image: "3.x" would jump to each new Python
+          # release on its own, and a brand-new Python is the likeliest thing to
+          # break the OpenTimestamps client. Upgrade deliberately.
+          python-version: "3.14"
 
       - name: Install tools
         if: steps.pre.outputs.run == 'true'
         # gnupg is preinstalled on the runner image.
-        run: python -m pip install --disable-pip-version-check markdown-it-py opentimestamps-client
+        run: python -m pip install --disable-pip-version-check -r scripts/requirements.txt
 
       - name: Verify signatures, key status and signed payloads
         # Nothing is stamped, committed, deployed or archived unless every letter
@@ -294,7 +297,7 @@ jobs:
           ref: main
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.x"
+          python-version: "3.14"
       - name: Announce updated URLs to search engines (IndexNow)
         # Non-fatal: a search engine being unreachable is not a release failure.
         continue-on-error: true
