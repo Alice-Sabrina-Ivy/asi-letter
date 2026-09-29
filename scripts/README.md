@@ -65,8 +65,8 @@ the SHA-512 of its `.md.asc`. SHA-256 stays because it is what each `.asc.ots`
 commits to (OpenTimestamps has no SHA-512), and older records may use it.
 
 Each file entry also has a `url` that downloads it (`raw.githubusercontent.com`,
-`main` branch). Each release has a `label` such as `v1.4.1 (2026-09-28)`, read from
-the newest release's patch notes, where every release is listed as
+`main` branch). Each release has a `label`, its version number such as `v1.4.1`,
+read from the newest release's patch notes, where every release is listed as
 `vX.Y.Z (YYYY-MM-DD)`. A release that the patch notes do not list gets no
 label, and nothing else changes.
 
@@ -88,9 +88,9 @@ derived from the *oldest* manifest entry, `version`/`dateModified` from the
 newest. The payload is serialized with `json.dumps` (not string-built) so values
 are escaped correctly inside the `<script>` element.
 
-The page title (`ASI Letter — v1.4.1 (2026-09-28)`) and the JSON-LD `version`
-use the release's `label` from the manifest, and fall back to the date version
-(`v2026.09.28`) when there is none. `data-release-version` and the
+The page title (`ASI Letter — v1.4.1 (2026-09-28)`: the label plus the release
+date) and the JSON-LD `version` (`v1.4.1`) use the release's `label` from the
+manifest, and fall back to the date version (`v2026.09.28`) when there is none. `data-release-version` and the
 `release-version` comment always carry the date version.
 
 The Open Graph and Twitter tags in `<head>` deliberately contain no version
