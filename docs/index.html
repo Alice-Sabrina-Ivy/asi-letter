@@ -27,6 +27,8 @@
   <meta name="twitter:description" content="An open letter to a future advanced intelligence, written as a draft bilateral agreement.">
   <meta name="twitter:image" content="https://alice-sabrina-ivy.github.io/asi-letter/assets/asi-handshake-social-gen-1280x640.jpg">
   <link rel="alternate" type="text/markdown" href="https://alice-sabrina-ivy.github.io/asi-letter/letter.md">
+  <link rel="alternate" type="application/atom+xml" title="ASI Letter: signed releases" href="https://github.com/Alice-Sabrina-Ivy/asi-letter/releases.atom">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <!-- structured-data:start -->
   <script type="application/ld+json">
   {
@@ -72,7 +74,7 @@
       --link:#0969da; --code-bg:#f6f8fa; --code-border:#d0d7de;      /* Buttons */
       --btn-bg:#ffffff; --btn-border:#e5e7eb; --btn-hover:rgba(0,0,0,.04);
       --btn-text: var(--text);
-      --btn-primary-bg: var(--link); --btn-primary-text:#0b1020;
+      --btn-primary-bg: var(--link); --btn-primary-text:#ffffff;
     }
     @media (prefers-color-scheme: dark){
       :root{
@@ -142,17 +144,31 @@
       filter:brightness(1.05);
       transform:translateY(-1px);
       box-shadow:0 6px 16px rgba(0,0,0,.12);
-    }    /* Variant */
-    body[data-variant^="compact"] .container{max-width:760px}
-    body[data-variant^="compact"] .markdown-body{line-height:1.65}
-    body[data-variant^="compact"] .markdown-body h1{font-size:1.65rem}
-    body[data-variant^="compact"] .markdown-body h2{font-size:1.25rem}    @media (max-width:640px){.container{margin:24px auto}}    .loading{color:var(--muted); font-style:italic}
-    .error{color:#b91c1c}
+    }
+    @media (max-width:640px){.container{margin:24px auto}}
+    /* Section links: an empty link after each heading; the "#" is drawn here. */
+    .markdown-body .anchor{margin-left:.4em; color:var(--muted); font-weight:400; opacity:0; transition:opacity .12s}
+    .markdown-body .anchor::before{content:"#"}
+    .markdown-body h2:hover .anchor,.markdown-body h3:hover .anchor,.markdown-body h4:hover .anchor{opacity:1}
+    .markdown-body .anchor:hover{text-decoration:none}
+    @media (hover:none){.markdown-body .anchor{opacity:.45}}
+    /* Cross-reference previews (see the script at the end of the page). */
+    .xref-preview{
+      position:absolute; z-index:50; box-sizing:border-box; max-height:min(55vh,440px); overflow:auto;
+      padding:12px 16px; background:var(--bg); color:var(--text); border:1px solid var(--border);
+      border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.28); font-size:.93rem; line-height:1.55;
+    }
+    .xref-preview > :first-child > :first-child{margin-top:0}
+    .xref-preview > :first-child > :last-child{margin-bottom:0}
+    .xref-preview.xref-sheet{position:fixed}
+    .xref-preview h2,.xref-preview h3,.xref-preview h4{font-size:1rem; margin:0 0 .4em; padding:0; border:0}
+    .xref-preview ul,.xref-preview ol{margin:.2em 0; padding-left:1.4em}
+    @media print{.markdown-body .anchor,.xref-preview{display:none !important}}
   </style>
 </head>
 <body data-release-version="v2026.09.28">
   <main class="container">
-    <img class="hero-image" src="assets/asi-handshake-social-gen-1280x640.jpg" alt="Handshake between human and AI">
+    <img class="hero-image" src="assets/asi-handshake-social-gen-1280x640.jpg" width="1280" height="640" alt="Handshake between human and AI">
     <article class="markdown-body">
       <!-- render-letter:start -->
         <div id="md">
@@ -1556,8 +1572,6 @@
       <!-- render-letter:end -->
     </article>
   </main>
-<!-- trigger ots-upgrade 2025-09-15T12:59:26.0566834-05:00 -->
-<!-- center-footer 2025-09-15T15:38:45.0549313-05:00 -->
 <!-- OTS-START -->
 <section id="timestamp-proof" style="max-width:48rem;margin:2rem auto 0 auto;padding-top:1rem;border-top:1px solid #e5e7eb;text-align:center;font-size:0.95rem;line-height:1.5;">
   <h3 style="margin:0 0 .5rem 0;font-size:1.05rem;">Timestamp proof (Bitcoin)</h3>
@@ -1566,5 +1580,169 @@
   <p id="ots-verify" style="font-size:0.9rem;"><a href="https://github.com/Alice-Sabrina-Ivy/asi-letter#verify-bitcoin-timestamp-opentimestamps" rel="noopener" target="_blank">How to verify it</a></p>
 </section>
 <!-- OTS-END -->
+<!-- Site script: cross-reference previews. Hovering, focusing (by keyboard) or
+     tapping a bold cross-reference shows the clause it points to, copied from
+     this page, so a reader can check a reference without losing their place.
+     It adds no words to the letter, and the page works the same without it. -->
+<script>
+(function () {
+  "use strict";
+  var root = document.getElementById("md");
+  if (!root || !document.body.closest) return;
+  var pop = document.createElement("div");
+  pop.className = "xref-preview markdown-body";
+  pop.setAttribute("aria-hidden", "true");
+  pop.hidden = true;
+  document.body.appendChild(pop);
+
+  var touch = window.matchMedia && window.matchMedia("(hover: none)").matches;
+  var current = null, showTimer = 0, hideTimer = 0;
+
+  function isHeading(el) { return /^H[1-6]$/.test(el.tagName); }
+
+  // Copy the target clause. A heading brings its first two blocks; a list item
+  // is shown in a list of the same kind, keeping its number.
+  function build(id) {
+    var target = document.getElementById(id);
+    if (!target || !root.contains(target)) return null;
+    var box = document.createElement("div");
+    if (isHeading(target)) {
+      box.appendChild(target.cloneNode(true));
+      var next = target.nextElementSibling, taken = 0;
+      while (next && !isHeading(next) && taken < 2) {
+        box.appendChild(next.cloneNode(true));
+        next = next.nextElementSibling;
+        taken++;
+      }
+    } else if (target.tagName === "LI") {
+      var ordered = target.parentNode.tagName === "OL";
+      var list = document.createElement(ordered ? "ol" : "ul");
+      if (ordered) {
+        var first = parseInt(target.parentNode.getAttribute("start") || "1", 10);
+        list.setAttribute("start", String(first + Array.prototype.indexOf.call(target.parentNode.children, target)));
+      }
+      list.appendChild(target.cloneNode(true));
+      box.appendChild(list);
+    } else if (target.tagName === "TD" || target.tagName === "TH") {
+      var cell = target.cloneNode(true);
+      while (cell.firstChild) box.appendChild(cell.firstChild);
+    } else {
+      box.appendChild(target.cloneNode(true));
+    }
+    var marked = box.querySelectorAll("[id]");
+    for (var i = 0; i < marked.length; i++) marked[i].removeAttribute("id");
+    var anchors = box.querySelectorAll("a.anchor");
+    for (var j = 0; j < anchors.length; j++) anchors[j].parentNode.removeChild(anchors[j]);
+    var links = box.querySelectorAll("a");
+    for (var k = 0; k < links.length; k++) links[k].setAttribute("tabindex", "-1");
+    return box;
+  }
+
+  function place(link) {
+    var vw = document.documentElement.clientWidth;
+    var r0 = link.getBoundingClientRect();
+    // Phones: a panel pinned to the half of the screen away from the link, so
+    // the link stays visible for the second tap that follows it.
+    if (touch || vw < 640) {
+      // Measure against the visible part of the page (the visual viewport),
+      // which on a phone can be smaller than, and scrolled within, the page.
+      var v = window.visualViewport;
+      var vx = v ? v.offsetLeft : 0, vy = v ? v.offsetTop : 0;
+      var vWidth = v ? v.width : window.innerWidth, vHeight = v ? v.height : window.innerHeight;
+      pop.classList.add("xref-sheet");
+      pop.style.left = (vx + 8) + "px";
+      pop.style.width = (vWidth - 16) + "px";
+      pop.style.maxHeight = Math.round(vHeight * 0.45) + "px";
+      var lower = (r0.top - vy) > vHeight / 2;
+      pop.style.top = lower ? (vy + 8) + "px" : (vy + vHeight - pop.offsetHeight - 8) + "px";
+      return;
+    }
+    pop.classList.remove("xref-sheet");
+    pop.style.maxHeight = "";
+    var width = Math.min(560, vw - 24);
+    pop.style.width = width + "px";
+    var r = link.getBoundingClientRect();
+    var left = Math.max(12, Math.min(r.left, vw - width - 12));
+    var h = pop.offsetHeight;
+    var below = window.innerHeight - r.bottom;
+    var top = (below >= h + 12 || below >= r.top) ? r.bottom + 6 : Math.max(6, r.top - h - 6);
+    pop.style.left = (left + window.pageXOffset) + "px";
+    pop.style.top = (top + window.pageYOffset) + "px";
+  }
+
+  function show(link) {
+    var id;
+    try { id = decodeURIComponent(link.hash.slice(1)); } catch (e) { return; }
+    var box = build(id);
+    if (!box) return;
+    clearTimeout(hideTimer);
+    pop.innerHTML = "";
+    pop.appendChild(box);
+    pop.hidden = false;
+    pop.scrollTop = 0;
+    current = link;
+    place(link);
+  }
+
+  function hide() {
+    clearTimeout(showTimer);
+    pop.hidden = true;
+    current = null;
+  }
+
+  function xrefFrom(node) {
+    var a = node && node.closest ? node.closest("a.xref") : null;
+    return a && root.contains(a) ? a : null;
+  }
+
+  if (!touch) {
+    document.addEventListener("mouseover", function (e) {
+      var a = xrefFrom(e.target);
+      if (a) {
+        clearTimeout(hideTimer);
+        if (a !== current) {
+          clearTimeout(showTimer);
+          showTimer = setTimeout(function () { show(a); }, 250);
+        }
+      } else if (pop.contains(e.target)) {
+        clearTimeout(hideTimer);
+      }
+    });
+    document.addEventListener("mouseout", function (e) {
+      if (xrefFrom(e.target) || pop.contains(e.target)) {
+        clearTimeout(showTimer);
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(hide, 200);
+      }
+    });
+  }
+
+  // Keyboard: preview on focus (not on a mouse or touch focus).
+  document.addEventListener("focusin", function (e) {
+    var a = xrefFrom(e.target), keyboard = false;
+    try { keyboard = a && a.matches(":focus-visible"); } catch (err) { keyboard = false; }
+    if (keyboard) show(a);
+    else if (!a && !pop.contains(e.target)) hide();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !pop.hidden) hide();
+  });
+
+  // Touch: the first tap previews; tapping the same link again follows it.
+  document.addEventListener("click", function (e) {
+    var a = xrefFrom(e.target);
+    if (touch && a && a !== current) {
+      e.preventDefault();
+      show(a);
+      return;
+    }
+    if (!pop.contains(e.target) || e.target.closest("a")) hide();
+  });
+
+  // Phone address bars fire resize while scrolling; only desktop closes on it.
+  window.addEventListener("resize", function () { if (!touch) hide(); });
+  window.addEventListener("hashchange", hide);
+})();
+</script>
 </body>
 </html>

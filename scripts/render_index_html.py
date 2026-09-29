@@ -8,6 +8,7 @@ adjustments so the static site no longer needs client-side rendering.
 from __future__ import annotations
 
 import argparse
+import copy
 import re
 import sys
 from dataclasses import dataclass
@@ -25,8 +26,8 @@ REPO_URL = "https://github.com/Alice-Sabrina-Ivy/asi-letter"
 LETTER_URL = f"{REPO_URL}/blob/main/docs/letter.md"
 KEYS_URL = f"{REPO_URL}/tree/main/keys"
 CTA_HTML = f"""
-<nav class="cta-bar" id="cta-bar">
-  <a class="btn btn-primary" id="btn-repo" href="{REPO_URL}" target="_blank" rel="noopener" aria-label="Open repository on GitHub">
+<nav class="cta-bar" id="cta-bar" aria-label="Site links">
+  <a class="btn btn-primary" id="btn-repo" href="{REPO_URL}" target="_blank" rel="noopener">
     <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.64 0 8.13c0 3.6 2.29 6.65 5.47 7.73.4.08.55-.18.55-.39 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.5-2.69-.96-.09-.23-.48-.96-.82-1.15-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.53.28-.87.51-1.07-1.78-.2-3.64-.91-3.64-4.05 0-.9.31-1.64.82-2.22-.08-.2-.36-1.02.08-2.12 0 0 .67-.22 2.2.85.64-.18 1.33-.27 2.01-.27.68 0 1.37.09 2.01.27 1.53-1.07 2.2-.85 2.2-.85.44 1.1.16 1.92.08 2.12.51.58.82 1.32.82 2.22 0 3.15-1.87 3.85-3.65 4.05.29.26.54.77.54 1.55 0 1.12-.01 2.03-.01 2.31 0 .21.15.47.55.39A8.06 8.06 0 0 0 16 8.13C16 3.64 12.42 0 8 0Z" fill="currentColor"/></svg>
     <span>Canonical source</span>
   </a>
@@ -151,8 +152,106 @@ def _wrap_in_signature_footer(parent: ET.Element, paragraphs: list) -> None:
         last = offset == len(paragraphs) - 1 and len(paragraphs) > 1
         if last and normalize(paragraph_text(paragraph)) in {"she/her", "she / her"}:
             paragraph.set("class", "pronouns")
+        # A newline between the lines, so copied or extracted text doesn't run them
+        # together ("Alice Sabrina Ivyshe/her"); browsers ignore it.
+        paragraph.tail = "\n"
         footer.append(paragraph)
     parent.insert(index, footer)
+
+
+def split_labelled_lines(root: ET.Element) -> int:
+    """Show a paragraph of labelled lines one label per line, keeping every word.
+
+    The letter's closing block writes lines such as "**Author key fingerprint:** …",
+    "**Author key policy:** …" and "**Canonical Source:** …" as one paragraph joined
+    by soft breaks, which a browser runs together. Where every line of a paragraph
+    opens with a bold label, split it at those breaks, as the sign-off is split.
+
+    Run this after link_cross_references (new paragraphs must not become
+    definition labels, which would make "**Canonical Source**" references
+    ambiguous) and after remove_canonical_paragraphs (which would otherwise
+    delete a lone "Canonical Source:" line of signed text).
+    """
+
+    parents = {child: parent for parent in root.iter() for child in parent}
+    split = 0
+    for block in list(root.iter("p")):
+        trial = _split_at_line_breaks(copy.deepcopy(block))
+        if len(trial) < 2:
+            continue
+        if not all(
+            len(line)
+            and line[0].tag == "strong"
+            and not (line.text or "").strip()
+            and "".join(line[0].itertext()).strip().endswith(":")
+            for line in trial
+        ):
+            continue
+        parent = parents[block]
+        index = list(parent).index(block)
+        tail = block.tail
+        lines = _split_at_line_breaks(block)
+        if block.get("id"):
+            lines[0].set("id", block.get("id"))
+        parent.remove(block)
+        for offset, line in enumerate(lines):
+            line.tail = "\n"
+            parent.insert(index + offset, line)
+        lines[-1].tail = tail
+        split += 1
+    return split
+
+
+_FINGERPRINT_RX = re.compile(r"\b([0-9A-F]{40})\b")
+
+
+def break_fingerprint_at_groups(root: ET.Element) -> None:
+    """Let the author fingerprint wrap only between its 4-character groups.
+
+    On a phone the unspaced 40-character fingerprint otherwise breaks at an
+    arbitrary point. <wbr> adds a break opportunity and no characters, so the
+    text reads and copies exactly as signed.
+    """
+
+    for block in root.iter("p"):
+        children = list(block)
+        if not children or children[0].tag != "strong":
+            continue
+        if normalize("".join(children[0].itertext())) != "author key fingerprint:":
+            continue
+        label = children[0]
+        match = _FINGERPRINT_RX.search(label.tail or "")
+        if not match:
+            continue
+        before, fingerprint, after = label.tail[: match.start()], match.group(1), label.tail[match.end() :]
+        span = ET.Element("span", {"class": "fpr"})
+        groups = [fingerprint[i : i + 4] for i in range(0, 40, 4)]
+        span.text = groups[0]
+        for group in groups[1:]:
+            ET.SubElement(span, "wbr").tail = group
+        label.tail = before
+        span.tail = after
+        block.insert(1, span)
+        return
+
+
+def add_heading_permalinks(root: ET.Element) -> None:
+    """Append an empty "#" link to each section heading, shown on hover.
+
+    It carries no text (the "#" is drawn by CSS), is hidden from assistive tech
+    and skipped by Tab, so the headings still read exactly as signed and the
+    keyboard order is unchanged. It only reveals the section's existing anchor.
+    """
+
+    for heading in root.iter():
+        if heading.tag not in {"h2", "h3", "h4"} or not heading.get("id"):
+            continue
+        link = ET.SubElement(
+            heading,
+            "a",
+            {"class": "anchor", "href": f"#{heading.get('id')}", "aria-hidden": "true", "tabindex": "-1"},
+        )
+        link.text = ""
 
 
 def _split_at_line_breaks(paragraph: ET.Element) -> list:
@@ -469,7 +568,22 @@ def link_cross_references(root: ET.Element) -> int:
             continue
         text = "".join(strong.itertext()).strip()
         if text.endswith(":"):
-            continue  # a label, not a reference
+            # A label, not a reference -- except a patch-note label ("**Lasting
+            # change:**"), which names the rule its note changed. Link it when its
+            # words match exactly one rule, the same test references get, so every
+            # release links its notes with no manual step. Labels that name no
+            # single rule ("Reconfirmation", "Housekeeping") stay plain.
+            parent = parents.get(strong)
+            is_note_label = (
+                strong in record
+                and parent is not None
+                and parent.tag == "li"
+                and list(parent)[0] is strong
+                and not (parent.text or "").strip()
+            )
+            if not is_note_label:
+                continue
+            text = text[:-1].rstrip()
         found = targets.get(normalize(text))
         if not found or not _same_case(text, found[1]):
             continue
@@ -544,8 +658,11 @@ def render_markdown(markdown_text: str) -> RenderResult:
     link_cross_references(root)
     add_link_attributes(root)
     remove_canonical_paragraphs(root)
+    split_labelled_lines(root)
+    break_fingerprint_at_groups(root)
     signature_found = ensure_signature(root)
     insert_cta(root)
+    add_heading_permalinks(root)
     rendered = "\n".join(ET.tostring(child, encoding="unicode") for child in list(root))
     return RenderResult(html=rendered, signature_found=signature_found)
 
