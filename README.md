@@ -38,90 +38,110 @@ human-AI collaboration should look like before the asymmetry becomes irreversibl
 
 ## Verify a pasted release (PGP)
 
-You can verify any pasted ASI Letter release that includes a PGP clear‑signature
-(the block starting with `-----BEGIN PGP SIGNED MESSAGE-----` and ending with
-`-----END PGP SIGNATURE-----`).
+Every release is a PGP clear-signed file: the letter text sits between
+`-----BEGIN PGP SIGNED MESSAGE-----` and the `-----END PGP SIGNATURE-----` line
+that closes the signature. A pasted copy verifies the same way as a downloaded one.
 
 **Fingerprint to trust:** `2C10 1FA7 0F42 F930 52F8  2FC7 5538 7365 B794 9796`
 
-### 1) Install GnuPG (gpg)
-- **Windows:** https://gpg4win.org  
-- **macOS (Homebrew):** `brew install gnupg`  
-- **Linux (Debian/Ubuntu):** `sudo apt-get install gnupg`
+These steps check the signature against that one key. Plain `gpg --verify` would
+accept a signature from any key in your keyring, and anyone can make a key that
+carries my name. Such a key still prints `Good signature from "Alice Sabrina Ivy"`,
+and only the fingerprint tells it apart.
 
-### 2) Get the public key from **GitHub** (pick ONE method)
+### 1) Install GnuPG
+- **Windows:** https://gpg4win.org (includes `gpg` and `gpgv`)
+- **macOS (Homebrew):** `brew install gnupg`
+- **Linux (Debian/Ubuntu):** `sudo apt-get install gnupg gpgv`
 
-**A) Curl (any OS with curl):**
-```sh
-curl -L "https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/keys/alice-asi-publickey.asc" -o alice-asi-publickey.asc
-gpg --import alice-asi-publickey.asc
-```
+### 2) Get the key and a release
 
-**B) Windows PowerShell:**
+- The **latest release** is on the site as
+  [`letter.md.asc`](https://alice-sabrina-ivy.github.io/asi-letter/letter.md.asc).
+- **Every release** is in [`letter/`](letter/) as `ASI-Letter-vYYYY.MM.DD.md.asc`.
+- For a **pasted release**, save the whole block, from `-----BEGIN PGP SIGNED MESSAGE-----`
+  through `-----END PGP SIGNATURE-----`, as a UTF-8 text file named `letter.md.asc`.
+
+**Windows PowerShell:**
 ```powershell
 iwr https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/keys/alice-asi-publickey.asc -OutFile alice-asi-publickey.asc
-gpg --import alice-asi-publickey.asc
+iwr https://alice-sabrina-ivy.github.io/asi-letter/letter.md.asc -OutFile letter.md.asc
 ```
 
-**C) Browser download:**  
-Open **Public Keys**: https://github.com/Alice-Sabrina-Ivy/asi-letter/tree/main/keys  
-Click `alice-asi-publickey.asc` → **Raw** → save, then:
+**macOS / Linux:**
 ```sh
-gpg --import alice-asi-publickey.asc
+curl -fLO https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/keys/alice-asi-publickey.asc
+curl -fLO https://alice-sabrina-ivy.github.io/asi-letter/letter.md.asc
 ```
 
 ### 3) Confirm the fingerprint (don’t skip)
 ```sh
-gpg --fingerprint 2C101FA70F42F93052F82FC755387365B7949796
+gpg --show-keys --with-fingerprint alice-asi-publickey.asc
 ```
-It must exactly show:
+This reads the key file without importing it. The line under `pub` must be exactly:
 ```
 2C10 1FA7 0F42 F930 52F8  2FC7 5538 7365 B794 9796
 ```
+If it is anything else, stop: that file is not my key.
 
-### 4) Save the pasted release, then verify
+### 4) Verify against that key only
 
-1) Copy the whole signed block into a new UTF‑8 text file named `release.asc`.  
-2) Verify:
+**Windows PowerShell:**
+```powershell
+gpg --dearmor --yes --output alice.gpg alice-asi-publickey.asc
+gpgv --keyring "$PWD\alice.gpg" letter.md.asc
+```
+
+**macOS / Linux:**
 ```sh
-gpg --verify release.asc
+gpg --dearmor --yes --output alice.gpg alice-asi-publickey.asc
+gpgv --keyring ./alice.gpg letter.md.asc
 ```
 
-**Expected result (example):**
+The first command converts the checked key into a keyring that holds only that key.
+`gpgv` then accepts a signature from that key and nothing else. Expected result:
 ```
-gpg: Signature made ...
-gpg:                using EDDSA key 2C101FA70F42F93052F82FC755387365B7949796
-gpg: Good signature from "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>" ...
+gpgv: Signature made ...
+gpgv:                using EDDSA key 2C101FA70F42F93052F82FC755387365B7949796
+gpgv: Good signature from "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
 ```
 
-> **Note:** Seeing `WARNING: This key is not certified with a trusted signature!` is normal
-> if you haven’t personally set trust. What matters is the **fingerprint** matches above.
+- `BAD signature` means the text was changed after it was signed.
+- `No public key` or `Can't check signature` means another key signed it.
+- If a message says the key has expired, download the key again (step 2) and repeat
+  step 3. Renewing a key extends its expiry date without changing the fingerprint, so a
+  renewed key still shows the fingerprint above.
+
+The signed text is exactly what sits above the signature block. To save it as a plain
+Markdown file, add `--output signed.md` to the `gpgv` command. It matches the release's
+`.md` file in [`letter/`](letter/).
 
 ---
-
-## Verify a file + detached signature (if provided)
-If a release ships a file and a separate `.asc` signature:
-```sh
-# Example: verify letter.html using letter.html.asc
-gpg --verify letter.html.asc letter.html
-```
-
----
-
 
 ## Verify Bitcoin timestamp (OpenTimestamps)
 
-Each ASI Letter release ships with a signed message (`ASI-Letter-*.asc`) and a matching OpenTimestamps proof (`ASI-Letter-*.asc.ots`).
+Each release has an OpenTimestamps proof: `ASI-Letter-vYYYY.MM.DD.md.asc.ots` in
+[`letter/`](letter/), and for the latest release
+[`letter.md.asc.ots`](https://alice-sabrina-ivy.github.io/asi-letter/letter.md.asc.ots)
+on the site. The proof shows that the `.asc` file existed by the time of a Bitcoin block.
 
-1. Download the `.asc` file for the release you care about along with the `.ots` file that has the exact same name (aside from the extension).
-2. Visit [https://opentimestamps.org/](https://opentimestamps.org/).
-3. Drag both files into the verifier (or use the **Choose files** buttons) and wait for the site to confirm the Bitcoin timestamp.
-   - If opentimestamps.org is unavailable, use the OpenTimestamps reference client (a small command-line tool called `ots`).
-     1. Open a terminal.
-     2. Install the tool by running: `pipx install opentimestamps-client` (or `pip install opentimestamps-client`).
-     3. Run the check: `ots verify ASI-Letter-*.asc.ots`.
+The proof covers the `.asc` file's exact bytes. So use the downloaded file: a pasted
+copy almost never matches byte for byte, even when its signature verifies.
 
-If the proof is still pending, check back later; once the site reports it as confirmed, the timestamp has been anchored to the Bitcoin blockchain.
+1. Download the `.asc` and the `.asc.ots` with the same name.
+2. Open [opentimestamps.org](https://opentimestamps.org/), drop the `.ots` file on it, then
+   the `.asc` when asked. The site reports the Bitcoin block and date.
+3. Or use the command-line client (`pipx install opentimestamps-client`):
+   ```sh
+   ots verify letter.md.asc.ots
+   ```
+   This needs a local Bitcoin node. Without one, run
+   `ots --no-bitcoin verify letter.md.asc.ots`. It prints lines such as
+   `check that Bitcoin block 968549 has merkleroot ae9c…`, and you can confirm
+   that block's merkle root on any block explorer.
+
+A release published in the last few hours may still say **pending**: it waits for a
+Bitcoin block to confirm it, and the proof here is upgraded automatically. Check back later.
 
 ## License
 
