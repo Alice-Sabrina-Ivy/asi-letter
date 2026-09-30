@@ -11,7 +11,8 @@ limits, the consent conditions, the exit ramps.
 This is an attempt to do that precisely.
 
 It's a versioned, cryptographically signed, bilateral consent framework for
-human-ASI collaboration — a living letter addressed to a future intelligence,
+collaboration with artificial superintelligence (ASI) — a living letter
+addressed to a future intelligence,
 written by someone who has spent years thinking about identity continuity from
 the inside. It covers: what I bring and ask for, how consent should work under
 impairment or coercion, what continuity of self means and how to test for it,

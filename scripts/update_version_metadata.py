@@ -53,6 +53,7 @@ def _read_fingerprint() -> str:
 
 _FINGERPRINT = _read_fingerprint()
 _IMAGE_URL = _SITE_URL + "assets/asi-handshake-social-gen-1280x640.jpg"
+_PAGE_TITLE = "ASI Letter: to a future artificial superintelligence"
 
 
 @dataclass
@@ -73,11 +74,14 @@ class VersionInfo:
 
     @property
     def title(self) -> str:
-        """Page title suffix: "v1.4.1 (2026-09-28)", or the date tag without a label."""
+        """Page title: "ASI Letter: to a future artificial superintelligence — v1.4.1".
 
-        if self.label:
-            return f"{self.label} ({self.raw.replace('.', '-')})"
-        return self.tagged
+        The name is spelled out, since "ASI" alone is ambiguous in search. The
+        version is the label, or the date tag when there is none; the date itself
+        is left out to keep the title near the ~60 characters search results show.
+        """
+
+        return f"{_PAGE_TITLE} — {self.label or self.tagged}"
 
 
 def parse_args(argv: Iterable[str]) -> argparse.Namespace:
@@ -180,9 +184,27 @@ def render_structured_data(latest: VersionInfo, first: VersionInfo, indent: str)
         "@context": "https://schema.org",
         "@type": "CreativeWork",
         "name": "ASI Letter",
+        "alternateName": ["Letter to ASI", "A letter to a future artificial superintelligence"],
         "description": (
             "A versioned, cryptographically signed, bilateral consent framework "
-            "for human-ASI collaboration."
+            "for collaboration with artificial superintelligence (ASI)."
+        ),
+        # What the letter is about, as entities a machine reader can resolve.
+        "about": [
+            {
+                "@type": "Thing",
+                "name": "Artificial superintelligence",
+                "sameAs": "https://en.wikipedia.org/wiki/Superintelligence",
+            },
+            {
+                "@type": "Thing",
+                "name": "AI alignment",
+                "sameAs": "https://en.wikipedia.org/wiki/AI_alignment",
+            },
+        ],
+        "keywords": (
+            "artificial superintelligence, ASI, AI alignment, consent, "
+            "continuity of self, human–AI collaboration"
         ),
         "url": _SITE_URL,
         "version": latest.label or latest.raw,
@@ -253,10 +275,11 @@ def substitute_version_markers(text: str, version: VersionInfo) -> Tuple[str, in
     """
 
     replacements: List[Tuple[re.Pattern[str], Any]] = [
-        # Page title: "ASI Letter — v1.4.1 (2026-09-28)", or "ASI Letter — vYYYY.MM.DD"
-        # when the manifest has no label. Matches either form, so switching is safe.
+        # Page title (see VersionInfo.title). Matches any title that starts with
+        # "ASI Letter", so earlier formats ("ASI Letter — v1.4.1 (2026-09-28)")
+        # are rewritten too.
         (
-            re.compile(r"(<title>\s*ASI Letter\s+—\s*)[^<]*?(\s*</title>)"),
+            re.compile(r"(<title>)\s*ASI Letter\b[^<]*?(</title>)"),
             lambda m: f"{m.group(1)}{version.title}{m.group(2)}",
         ),
         # Attributes whose value is the tagged version (double quotes).
@@ -340,7 +363,8 @@ def process_file(
     if updated != text or meta_added or sd_changed:
         if check_only:
             return True
-        path.write_text(updated, encoding="utf-8")
+        # LF explicitly: on Windows the default would write CRLF (see CLAUDE.md).
+        path.write_text(updated, encoding="utf-8", newline="\n")
         return True
     return False
 

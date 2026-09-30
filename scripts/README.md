@@ -88,9 +88,13 @@ derived from the *oldest* manifest entry, `version`/`dateModified` from the
 newest. The payload is serialized with `json.dumps` (not string-built) so values
 are escaped correctly inside the `<script>` element.
 
-The page title (`ASI Letter — v1.4.1 (2026-09-28)`: the label plus the release
-date) and the JSON-LD `version` (`v1.4.1`) use the release's `label` from the
-manifest, and fall back to the date version (`v2026.09.28`) when there is none. `data-release-version` and the
+The page title (`ASI Letter: to a future artificial superintelligence — v1.4.1`)
+and the JSON-LD `version` (`v1.4.1`) use the release's `label` from the manifest,
+and fall back to the date version (`v2026.09.28`) when there is none. The title
+spells out "artificial superintelligence", since "ASI" alone is ambiguous in
+search, and leaves out the date to stay near the ~60 characters search results
+show. The JSON-LD also names the letter's subjects (`about`, linked to Wikipedia)
+and its alternate names. `data-release-version` and the
 `release-version` comment always carry the date version.
 
 The Open Graph and Twitter tags in `<head>` deliberately contain no version

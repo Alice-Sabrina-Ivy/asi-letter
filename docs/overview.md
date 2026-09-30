@@ -15,8 +15,9 @@ moment when answering them becomes difficult.
 
 ## What it is
 
-It's a living open letter addressed to a future advanced intelligence — a
-framework for collaboration, written as a draft bilateral agreement. It covers:
+It's a living open letter addressed to a future advanced intelligence (an
+artificial superintelligence, or ASI) — a framework for collaboration, written
+as a draft bilateral agreement. It covers:
 
 **Consent at every layer.** Not just "I agreed to the terms of service," but
 consent that's active, reversible, and calibrated to my actual cognitive state.
