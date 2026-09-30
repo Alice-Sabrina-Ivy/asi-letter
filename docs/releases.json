@@ -1,6 +1,6 @@
 {
   "schema": "asi-letter/releases#2",
-  "updated": "2026-09-30T00:36:28Z",
+  "updated": "2026-09-30T06:50:57Z",
   "key": {
     "fingerprint_current": "2C101FA70F42F93052F82FC755387365B7949796",
     "path": "keys/alice-asi-publickey.asc"
@@ -31,9 +31,9 @@
         "ots": {
           "path": "letter/ASI-Letter-v2026.09.29.md.asc.ots",
           "url": "https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/letter/ASI-Letter-v2026.09.29.md.asc.ots",
-          "size": 805,
-          "sha256": "7bb46e400ecd6ddd2ca6670baeaf08f05f80d81938602c5c2385b7019bad138f",
-          "sha512": "d8ccf4076f581f698194f0b68cfb9304bd0bcd39f8c43f88ad305e9ac1419f49e0866963f7f8bb6083adb3bee9d6d143f19f75de6117432e4678171e49c9690e",
+          "size": 4809,
+          "sha256": "15a813c78a3b4838683b2673f0b347fac891b4b92cad474e8f8522109110bc8d",
+          "sha512": "fd32d79089f4793d2bf15a725be63cba4064a8739fd02e093b45bfa41cf9e7c50cd1d5dc89f5eb4bf09f1da313738dc51dd62748ef3bd9c24838bd47632f27ff",
           "encoding": "binary"
         }
       }
