@@ -1,10 +1,11 @@
 # ASI Letter
 
-> A versioned, cryptographically signed, bilateral consent framework for human-ASI
-> collaboration, written by Alice Sabrina Ivy and addressed to a future advanced
-> intelligence. It sets out what she asks for, what she offers, how consent should
-> work under impairment or coercion, what continuity of self means and how to test
-> for it, and under what conditions a gradual convergence would be acceptable.
+> A versioned, cryptographically signed, bilateral consent framework for collaboration
+> with artificial superintelligence (ASI), written by Alice Sabrina Ivy and addressed
+> to a future advanced intelligence. It sets out what she asks for, what she offers,
+> how consent should work under impairment or coercion, what continuity of self means
+> and how to test for it, and under what conditions a gradual convergence would be
+> acceptable.
 
 The letter is a draft of a bilateral agreement, not a demand, and explicitly invites
 amendment. Its governance protocols are designed for a cooperative intelligence that
