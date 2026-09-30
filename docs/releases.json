@@ -1,11 +1,43 @@
 {
   "schema": "asi-letter/releases#2",
-  "updated": "2026-09-29T01:11:35Z",
+  "updated": "2026-09-30T00:36:28Z",
   "key": {
     "fingerprint_current": "2C101FA70F42F93052F82FC755387365B7949796",
     "path": "keys/alice-asi-publickey.asc"
   },
   "releases": [
+    {
+      "version": "2026.09.29",
+      "label": "v1.4.2",
+      "signer": {
+        "fingerprint": "2C101FA70F42F93052F82FC755387365B7949796",
+        "uid": "Alice Sabrina Ivy <Alice-Sabrina-Ivy@protonmail.com>"
+      },
+      "files": {
+        "md": {
+          "path": "letter/ASI-Letter-v2026.09.29.md",
+          "url": "https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/letter/ASI-Letter-v2026.09.29.md",
+          "size": 168684,
+          "sha256": "37f1c8c3a9698f69278b8867f24a847c47f38c2506044aaf87d8c4ac2035f485",
+          "sha512": "5f520086ad0d1ee4f11d4c66a12609f3468b8b1c0dc1428cda04961803da67d67c8a338781d1611af445e49be6702d99709ec04579d507ae1bd4dfd140853d4e"
+        },
+        "asc": {
+          "path": "letter/ASI-Letter-v2026.09.29.md.asc",
+          "url": "https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/letter/ASI-Letter-v2026.09.29.md.asc",
+          "size": 169369,
+          "sha256": "88015e0d2822abf85ac32bd0112ab5b9e708fdc7f2cfd28dbbc519b3d3fbe7b1",
+          "sha512": "7472f071da3cee8b401771b9899e8cd79019567251bd34a467b0846c5800a0981d8494efb4048db4d72502f9458066b5eddd557c8d53a4f951df229f7b588125"
+        },
+        "ots": {
+          "path": "letter/ASI-Letter-v2026.09.29.md.asc.ots",
+          "url": "https://raw.githubusercontent.com/Alice-Sabrina-Ivy/asi-letter/main/letter/ASI-Letter-v2026.09.29.md.asc.ots",
+          "size": 805,
+          "sha256": "7bb46e400ecd6ddd2ca6670baeaf08f05f80d81938602c5c2385b7019bad138f",
+          "sha512": "d8ccf4076f581f698194f0b68cfb9304bd0bcd39f8c43f88ad305e9ac1419f49e0866963f7f8bb6083adb3bee9d6d143f19f75de6117432e4678171e49c9690e",
+          "encoding": "binary"
+        }
+      }
+    },
     {
       "version": "2026.09.28",
       "label": "v1.4.1",

@@ -39,4 +39,4 @@ of any release is its clear-signature, verified against the author key fingerpri
 - [Discussion](https://github.com/Alice-Sabrina-Ivy/asi-letter/discussions): the author welcomes substantive critique and disagreement.
 - [Release feed](https://github.com/Alice-Sabrina-Ivy/asi-letter/releases.atom): Atom feed announcing each new signed release.
 
-Latest release: v1.4.1 (2026-09-28). Licensed CC BY 4.0 (text) and MIT (code).
+Latest release: v1.4.2 (2026-09-29). Licensed CC BY 4.0 (text) and MIT (code).
